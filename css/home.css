@@ -47,10 +47,19 @@ header {
 }
 
 .logo {
-    font-size: 1.5rem;
-    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     color: var(--text-light);
+    font-size: 1.2rem;
+    font-weight: 700;
     letter-spacing: 0.05em;
+}
+
+.logo img {
+    width: 80px;
+    height: auto;
+    display: block;
 }
 
 .nav-links {
@@ -220,21 +229,26 @@ header {
 }
 
 .services {
-    background: linear-gradient(180deg, #f4f6f8 0%, #e8eef1 100%);
-    padding: 5rem 7vw 6rem;
     position: relative;
+    padding: 5rem 7vw 6rem;
     overflow: hidden;
+    color: #152229;
 }
 
 .services::before {
     content: "";
     position: absolute;
-    top: -30%;
-    right: -10%;
-    width: 320px;
-    height: 320px;
-    background: radial-gradient(circle at center, rgba(31, 163, 114, 0.25), transparent 70%);
-    filter: blur(2px);
+    inset: 0;
+    background: url("../public/background.jpg") center/cover no-repeat;
+    opacity: 0.32;
+    z-index: 0;
+}
+
+.services::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.82), rgba(228, 234, 248, 0.76));
     z-index: 0;
 }
 
@@ -261,6 +275,7 @@ header {
     overflow: hidden;
     mask-image: linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%);
     -webkit-mask-image: linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%);
+    z-index: 1;
 }
 
 .services-track {

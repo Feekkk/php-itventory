@@ -13,7 +13,10 @@
 <body>
     <header>
         <nav class="navbar">
-            <div class="logo">RCMP-itventory</div>
+            <div class="logo">
+                <img src="public/unikl-rcmp.png" alt="Universiti Kuala Lumpur Royal College of Medicine Perak logo">
+                <span>RCMP-itventory</span>
+            </div>
             <div class="nav-links">
                 <a href="#">Browse Equipment</a>
                 <a href="#services">Services Provided</a>
