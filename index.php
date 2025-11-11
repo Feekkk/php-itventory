@@ -21,7 +21,7 @@
                 <a href="#">Browse Equipment</a>
                 <a href="#services">Services Provided</a>
                 <a href="#">Help</a>
-                <a class="sign-in" href="#">Sign In</a>
+                <a class="sign-in" href="auth/login.php">Sign In</a>
             </div>
         </nav>
     </header>
