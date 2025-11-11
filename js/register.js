@@ -39,8 +39,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Form submission handling
     if (registerForm) {
         registerForm.addEventListener("submit", (e) => {
-            e.preventDefault();
-            
             const staffId = document.getElementById("staff_id").value.trim();
             const fullName = document.getElementById("full_name").value.trim();
             const email = document.getElementById("email").value.trim();
@@ -54,42 +52,52 @@ document.addEventListener("DOMContentLoaded", () => {
             let isValid = true;
 
             if (!staffId) {
+                e.preventDefault();
                 showFieldError("staff_id", "Staff ID is required");
                 isValid = false;
             }
 
             if (!fullName) {
+                e.preventDefault();
                 showFieldError("full_name", "Full name is required");
                 isValid = false;
             } else if (fullName.length < 3) {
+                e.preventDefault();
                 showFieldError("full_name", "Full name must be at least 3 characters");
                 isValid = false;
             }
 
             if (!email) {
+                e.preventDefault();
                 showFieldError("email", "Email is required");
                 isValid = false;
             } else if (!isValidEmail(email)) {
+                e.preventDefault();
                 showFieldError("email", "Please enter a valid email address");
                 isValid = false;
             }
 
             if (!password) {
+                e.preventDefault();
                 showFieldError("password", "Password is required");
                 isValid = false;
             } else if (password.length < 8) {
+                e.preventDefault();
                 showFieldError("password", "Password must be at least 8 characters long");
                 isValid = false;
             }
 
             if (!confirmPassword) {
+                e.preventDefault();
                 showFieldError("confirm_password", "Please confirm your password");
                 isValid = false;
             } else if (password !== confirmPassword) {
+                e.preventDefault();
                 showFieldError("confirm_password", "Passwords do not match");
                 isValid = false;
             }
 
+            // Only prevent default if validation failed
             if (!isValid) {
                 return;
             }
@@ -100,23 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
             submitButton.disabled = true;
             submitButton.innerHTML = '<span>Creating account...</span>';
 
-            // Simulate API call (replace with actual registration logic)
-            setTimeout(() => {
-                // Reset button state
-                submitButton.disabled = false;
-                submitButton.innerHTML = originalText;
-
-                // TODO: Replace with actual registration logic
-                console.log("Registration attempt:", { staffId, fullName, email, password });
-                
-                // Show success message
-                showSuccess("Account created successfully! Redirecting to login...");
-                
-                // Redirect to login page after 2 seconds
-                setTimeout(() => {
-                    window.location.href = "login.php";
-                }, 2000);
-            }, 1500);
+            // Form will submit normally to PHP handler - don't prevent default
         });
     }
 

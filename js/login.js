@@ -28,14 +28,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // Form submission handling
     if (loginForm) {
         loginForm.addEventListener("submit", (e) => {
-            e.preventDefault();
-            
             const email = document.getElementById("email").value;
             const password = passwordInput.value;
-            const remember = document.getElementById("remember").checked;
 
             // Basic validation
             if (!email || !password) {
+                e.preventDefault();
                 showError("Please fill in all fields");
                 return;
             }
@@ -46,20 +44,8 @@ document.addEventListener("DOMContentLoaded", () => {
             submitButton.disabled = true;
             submitButton.innerHTML = '<span>Signing in...</span>';
 
-            // Simulate API call (replace with actual authentication logic)
-            setTimeout(() => {
-                // Reset button state
-                submitButton.disabled = false;
-                submitButton.innerHTML = originalText;
-
-                // TODO: Replace with actual authentication logic
-                console.log("Login attempt:", { email, password, remember });
-                
-                // Example: Redirect based on user role (implement actual logic)
-                // window.location.href = "../admin/dashboard.php";
-                // or
-                // window.location.href = "../technician/dashboard.php";
-            }, 1000);
+            // Form will submit normally to PHP handler
+            // No need to prevent default - let PHP handle the authentication
         });
     }
 

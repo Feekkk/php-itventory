@@ -1,3 +1,78 @@
+<?php
+require_once __DIR__ . '/../database/config.php';
+require_once __DIR__ . '/session.php';
+
+// Redirect if already logged in
+if (isLoggedIn()) {
+    header('Location: ../technician/dashboard.php');
+    exit();
+}
+
+$error = '';
+$success = '';
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $remember = isset($_POST['remember']);
+    
+    // Validation
+    if (empty($email)) {
+        $error = 'Email is required.';
+    } elseif (empty($password)) {
+        $error = 'Password is required.';
+    } else {
+        // Authenticate user
+        $conn = getDBConnection();
+        
+        $stmt = $conn->prepare("SELECT id, staff_id, full_name, email, password FROM technician WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 1) {
+            $user = $result->fetch_assoc();
+            
+            // Verify password
+            if (password_verify($password, $user['password'])) {
+                // Set session variables
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['staff_id'] = $user['staff_id'];
+                $_SESSION['full_name'] = $user['full_name'];
+                $_SESSION['user_email'] = $user['email'];
+                
+                // Set remember me cookie if checked
+                if ($remember) {
+                    $cookie_value = base64_encode($user['id'] . ':' . hash('sha256', $user['password']));
+                    setcookie('remember_token', $cookie_value, time() + (86400 * 30), '/'); // 30 days
+                }
+                
+                // Redirect to dashboard
+                header('Location: ../technician/dashboard.php');
+                exit();
+            } else {
+                $error = 'Invalid email or password.';
+            }
+        } else {
+            $error = 'Invalid email or password.';
+        }
+        
+        $stmt->close();
+        $conn->close();
+    }
+}
+
+// Get any session messages
+$message = getSessionMessage();
+if ($message) {
+    if ($message['type'] === 'success') {
+        $success = $message['content'];
+    } else {
+        $error = $message['content'];
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,10 +130,20 @@
             <div class="login-right">
                 <div class="login-card">
                     <h2>Sign In</h2>
-                    <form id="loginForm" action="#" method="POST" class="login-form">
+                    <?php if ($error): ?>
+                        <div class="error-message" style="background: #fee2e2; color: #dc2626; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; border: 1px solid #fecaca;">
+                            <?php echo htmlspecialchars($error); ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($success): ?>
+                        <div class="success-message" style="background: #d1fae5; color: #065f46; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; border: 1px solid #a7f3d0;">
+                            <?php echo htmlspecialchars($success); ?>
+                        </div>
+                    <?php endif; ?>
+                    <form id="loginForm" action="" method="POST" class="login-form">
                         <div class="form-group">
                             <label for="email">Email Address</label>
-                            <input type="email" id="email" name="email" placeholder="Enter your email" required autocomplete="email">
+                            <input type="email" id="email" name="email" placeholder="Enter your email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required autocomplete="email">
                         </div>
                         <div class="form-group">
                             <label for="password">Password</label>
