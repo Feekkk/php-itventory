@@ -239,6 +239,19 @@ header {
     color: var(--text-secondary);
 }
 
+.form-group small {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.field-error {
+    color: #dc2626;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
 .password-wrapper {
     position: relative;
 }
