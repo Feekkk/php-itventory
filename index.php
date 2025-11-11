@@ -20,7 +20,7 @@
             <div class="nav-links">
                 <a href="#">Browse Equipment</a>
                 <a href="#services">Services Provided</a>
-                <a href="#">Help</a>
+                <a href="#contact">Contact</a>
                 <a href="auth/register.php">Sign Up</a>
                 <a class="sign-in" href="auth/login.php">Sign In</a>
             </div>
@@ -98,6 +98,22 @@
                     </div>
                     <div class="category-label">Accessories</div>
                 </article>
+            </div>
+        </section>
+
+        <section id="about" class="about">
+            <div class="about-container">
+                <div class="about-banner">
+                    <div class="about-heading">
+                        <h2>UniKL RCMP<br>IT department</h2>
+                    </div>
+                    <div class="about-content-right">
+                        <p class="about-description">
+                            We strive to be a force for good in the IT industry and beyond, from empowering faculty and staff to manage their equipment efficiently to investing in the technological infrastructure that supports our academic community. As part of <span class="highlight-text">UNIKL Royal College of Medicine Perak</span>, our IT department is committed to providing comprehensive technology solutions, maintaining state-of-the-art systems, and ensuring data security across all operations. We are dedicated to enhancing the digital experience and supporting the college's mission of delivering exceptional medical education and research.
+                        </p>
+                        <a href="#services" class="about-cta-btn">Learn more about our services</a>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -239,6 +255,43 @@
                         <h3>Knowledge Base</h3>
                         <p>Self-service guides to troubleshoot and stay productive.</p>
                     </article>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact" class="contact">
+            <div class="contact-container">
+                <div class="contact-grid">
+                    <div class="contact-item">
+                        <div class="contact-heading">EMAIL</div>
+                        <div class="contact-value">itventory@unikl.edu.my</div>
+                        <div class="contact-description">Send us an email</div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-heading">PHONE</div>
+                        <div class="contact-value">+60 5-249 7900</div>
+                        <div class="contact-description">Call our helpdesk</div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-heading">LOCATION</div>
+                        <div class="contact-value">RCMP Campus</div>
+                        <div class="contact-description">Visit our office</div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-heading">HOURS</div>
+                        <div class="contact-value">Mon - Fri, 8AM - 5PM</div>
+                        <div class="contact-description">Operating hours</div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-heading">SUPPORT</div>
+                        <div class="contact-value">Only in Working Hours</div>
+                        <div class="contact-description">Emergency support</div>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-heading">DEPARTMENT</div>
+                        <div class="contact-value">IT Department</div>
+                        <div class="contact-description">UNIKL RCMP</div>
+                    </div>
                 </div>
             </div>
         </section>
