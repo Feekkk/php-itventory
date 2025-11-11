@@ -156,12 +156,12 @@ if ($message) {
                 <div class="login-card">
                     <h2>Create Account</h2>
                     <?php if ($error): ?>
-                        <div class="error-message" style="background: #fee2e2; color: #dc2626; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; border: 1px solid #fecaca;">
+                        <div class="error-message">
                             <?php echo htmlspecialchars($error); ?>
                         </div>
                     <?php endif; ?>
                     <?php if ($success): ?>
-                        <div class="success-message" style="background: #d1fae5; color: #065f46; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; border: 1px solid #a7f3d0;">
+                        <div class="success-message">
                             <?php echo htmlspecialchars($success); ?>
                         </div>
                     <?php endif; ?>
