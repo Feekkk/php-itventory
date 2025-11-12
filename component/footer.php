@@ -1,8 +1,20 @@
+<?php
+// Determine the correct path to public folder and CSS based on where footer is included
+// Check if the calling script is in a subdirectory
+$script_path = $_SERVER['PHP_SELF'] ?? '';
+$is_subdirectory = (strpos($script_path, '/technician/') !== false);
+$footer_base_path = $is_subdirectory ? '../public/' : 'public/';
+$footer_css_path = $is_subdirectory ? '../css/footer.css' : 'css/footer.css';
+
+// Include footer CSS (browsers handle duplicate stylesheet loads gracefully)
+// Link tag works in body in modern browsers
+echo '<link rel="stylesheet" href="' . htmlspecialchars($footer_css_path) . '">' . "\n";
+?>
 <footer class="site-footer">
     <div class="footer-inner">
         <div class="footer-brand">
             <div class="footer-logo">
-                <img src="public/rcmp-white.png" alt="Royal College of Medicine Perak crest">
+                <img src="<?php echo $footer_base_path; ?>rcmp-white.png" alt="Royal College of Medicine Perak crest">
             </div>
             <div class="footer-tagline">
                 <p class="footer-title">UNIKL Royal College of Medicine Perak</p>
