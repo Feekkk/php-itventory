@@ -22,7 +22,6 @@ $stats = [
     'pending' => 0,
     'picked_up' => 0,
     'returned' => 0,
-    'overdue' => 0
 ];
 
 try {
@@ -59,7 +58,6 @@ try {
             SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
             SUM(CASE WHEN status = 'Picked Up' THEN 1 ELSE 0 END) as picked_up,
             SUM(CASE WHEN status = 'Returned' THEN 1 ELSE 0 END) as returned,
-            SUM(CASE WHEN status = 'Overdue' THEN 1 ELSE 0 END) as overdue
             FROM pickups";
         
         $stats_result = $conn->query($stats_sql);
@@ -69,7 +67,6 @@ try {
             $stats['pending'] = $stats_row['pending'] ?? 0;
             $stats['picked_up'] = $stats_row['picked_up'] ?? 0;
             $stats['returned'] = $stats_row['returned'] ?? 0;
-            $stats['overdue'] = $stats_row['overdue'] ?? 0;
         }
         
         // Get pickups
@@ -186,20 +183,6 @@ require_once __DIR__ . '/../component/header.php';
                 <div class="stat-label">Returned</div>
             </div>
         </div>
-
-        <div class="stat-card">
-            <div class="stat-icon overdue">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                </svg>
-            </div>
-            <div class="stat-content">
-                <div class="stat-value"><?php echo $stats['overdue']; ?></div>
-                <div class="stat-label">Overdue</div>
-            </div>
-        </div>
     </div>
 
     <!-- Filters Section -->
@@ -225,7 +208,6 @@ require_once __DIR__ . '/../component/header.php';
                     <option value="Pending" <?php echo $status_filter === 'Pending' ? 'selected' : ''; ?>>Pending</option>
                     <option value="Picked Up" <?php echo $status_filter === 'Picked Up' ? 'selected' : ''; ?>>Picked Up</option>
                     <option value="Returned" <?php echo $status_filter === 'Returned' ? 'selected' : ''; ?>>Returned</option>
-                    <option value="Overdue" <?php echo $status_filter === 'Overdue' ? 'selected' : ''; ?>>Overdue</option>
                 </select>
 
                 <button type="submit" class="filter-btn">
@@ -248,83 +230,184 @@ require_once __DIR__ . '/../component/header.php';
         </form>
     </div>
 
-    <!-- Results Summary -->
-    <div class="results-summary">
-        <span class="results-count"><?php echo count($pickups); ?> record<?php echo count($pickups) !== 1 ? 's' : ''; ?> found</span>
-    </div>
-
-    <!-- Pickups Table -->
-    <div class="table-container">
-        <?php if (empty($pickups)): ?>
-            <div class="empty-state">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M4 7h16v11H4z"></path>
-                    <path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path>
-                </svg>
-                <h3>No pickup records found</h3>
-                <p>Try adjusting your search or filter criteria.</p>
+    <!-- Pickups Display - Two Vertical Boxes -->
+    <div class="pickups-layout">
+        <!-- Pending Box -->
+        <div class="pickup-box pending-box">
+            <div class="box-header">
+                <div class="box-title">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <h2>Pending</h2>
+                    <span class="box-count"><?php 
+                        $pending_count = count(array_filter($pickups, function($p) { 
+                            return ($p['status'] ?? '') === 'Pending'; 
+                        })); 
+                        echo $pending_count; 
+                    ?></span>
+                </div>
             </div>
-        <?php else: ?>
-            <table class="pickups-table">
-                <thead>
-                    <tr>
-                        <th>Equipment</th>
-                        <th>Lecturer</th>
-                        <th>Pickup Date</th>
-                        <th>Expected Return</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($pickups as $pickup): ?>
-                        <tr>
-                            <td>
-                                <div class="equipment-info">
-                                    <strong class="equipment-id"><?php echo htmlspecialchars($pickup['equipment_id']); ?></strong>
-                                    <span class="equipment-name"><?php echo htmlspecialchars($pickup['equipment_name']); ?></span>
+            <div class="box-content">
+                <?php 
+                $pending_pickups = array_filter($pickups, function($p) { 
+                    return ($p['status'] ?? '') === 'Pending'; 
+                }); 
+                ?>
+                <?php if (empty($pending_pickups)): ?>
+                    <div class="empty-box-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <p>No pending pickups</p>
+                    </div>
+                <?php else: ?>
+                    <div class="pickup-cards">
+                        <?php foreach ($pending_pickups as $pickup): ?>
+                            <div class="pickup-card">
+                                <div class="card-header">
+                                    <div class="equipment-info">
+                                        <strong class="equipment-id"><?php echo htmlspecialchars($pickup['equipment_id']); ?></strong>
+                                        <span class="equipment-name"><?php echo htmlspecialchars($pickup['equipment_name']); ?></span>
+                                    </div>
+                                    <span class="status-badge status-pending">Pending</span>
                                 </div>
-                            </td>
-                            <td>
-                                <div class="lecturer-info">
-                                    <strong><?php echo htmlspecialchars($pickup['lecturer_name']); ?></strong>
-                                    <span><?php echo htmlspecialchars($pickup['lecturer_email']); ?></span>
+                                <div class="card-body">
+                                    <div class="info-row">
+                                        <span class="info-label">Lecturer:</span>
+                                        <span class="info-value"><?php echo htmlspecialchars($pickup['lecturer_name']); ?></span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Email:</span>
+                                        <span class="info-value"><?php echo htmlspecialchars($pickup['lecturer_email']); ?></span>
+                                    </div>
                                     <?php if (!empty($pickup['lecturer_phone'])): ?>
-                                        <span class="lecturer-phone"><?php echo htmlspecialchars($pickup['lecturer_phone']); ?></span>
+                                        <div class="info-row">
+                                            <span class="info-label">Phone:</span>
+                                            <span class="info-value"><?php echo htmlspecialchars($pickup['lecturer_phone']); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <div class="info-row">
+                                        <span class="info-label">Pickup Date:</span>
+                                        <span class="info-value"><?php echo date('d M Y', strtotime($pickup['pickup_date'])); ?></span>
+                                    </div>
+                                    <?php if ($pickup['expected_return_date']): ?>
+                                        <div class="info-row">
+                                            <span class="info-label">Return Date:</span>
+                                            <span class="info-value"><?php echo date('d M Y', strtotime($pickup['expected_return_date'])); ?></span>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
-                            </td>
-                            <td>
-                                <span class="date-value"><?php echo date('d M Y', strtotime($pickup['pickup_date'])); ?></span>
-                            </td>
-                            <td>
-                                <?php if ($pickup['expected_return_date']): ?>
-                                    <span class="date-value"><?php echo date('d M Y', strtotime($pickup['expected_return_date'])); ?></span>
-                                <?php else: ?>
-                                    <span class="date-value text-muted">Not set</span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php
-                                $status_class = strtolower(str_replace(' ', '-', $pickup['status'] ?? 'pending'));
-                                ?>
-                                <span class="status-badge status-<?php echo $status_class; ?>">
-                                    <?php echo htmlspecialchars($pickup['status'] ?? 'Pending'); ?>
-                                </span>
-                            </td>
-                            <td>
-                                <span class="date-value text-muted"><?php echo date('d M Y', strtotime($pickup['created_at'])); ?></span>
-                            </td>
-                            <td>
-                                <div class="action-buttons">
+                                <div class="card-actions">
                                     <button class="action-btn view-btn" title="View Details">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                             <circle cx="12" cy="12" r="3"></circle>
                                         </svg>
                                     </button>
-                                    <?php if ($pickup['status'] === 'Picked Up' || $pickup['status'] === 'Pending'): ?>
+                                    <button class="action-btn handover-btn" title="Hand Over">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Hand Over Box -->
+        <div class="pickup-box handover-box">
+            <div class="box-header">
+                <div class="box-title">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <h2>Hand Over</h2>
+                    <span class="box-count"><?php 
+                        $handover_count = count(array_filter($pickups, function($p) { 
+                            return in_array($p['status'] ?? '', ['Picked Up', 'Returned']); 
+                        })); 
+                        echo $handover_count; 
+                    ?></span>
+                </div>
+            </div>
+            <div class="box-content">
+                <?php 
+                $handover_pickups = array_filter($pickups, function($p) { 
+                    return in_array($p['status'] ?? '', ['Picked Up', 'Returned']); 
+                }); 
+                ?>
+                <?php if (empty($handover_pickups)): ?>
+                    <div class="empty-box-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <p>No handover records</p>
+                    </div>
+                <?php else: ?>
+                    <div class="pickup-cards">
+                        <?php foreach ($handover_pickups as $pickup): ?>
+                            <?php
+                            $status_class = strtolower(str_replace(' ', '-', $pickup['status'] ?? 'pending'));
+                            ?>
+                            <div class="pickup-card">
+                                <div class="card-header">
+                                    <div class="equipment-info">
+                                        <strong class="equipment-id"><?php echo htmlspecialchars($pickup['equipment_id']); ?></strong>
+                                        <span class="equipment-name"><?php echo htmlspecialchars($pickup['equipment_name']); ?></span>
+                                    </div>
+                                    <span class="status-badge status-<?php echo $status_class; ?>">
+                                        <?php echo htmlspecialchars($pickup['status'] ?? 'Pending'); ?>
+                                    </span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="info-row">
+                                        <span class="info-label">Lecturer:</span>
+                                        <span class="info-value"><?php echo htmlspecialchars($pickup['lecturer_name']); ?></span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Email:</span>
+                                        <span class="info-value"><?php echo htmlspecialchars($pickup['lecturer_email']); ?></span>
+                                    </div>
+                                    <?php if (!empty($pickup['lecturer_phone'])): ?>
+                                        <div class="info-row">
+                                            <span class="info-label">Phone:</span>
+                                            <span class="info-value"><?php echo htmlspecialchars($pickup['lecturer_phone']); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <div class="info-row">
+                                        <span class="info-label">Pickup Date:</span>
+                                        <span class="info-value"><?php echo date('d M Y', strtotime($pickup['pickup_date'])); ?></span>
+                                    </div>
+                                    <?php if ($pickup['expected_return_date']): ?>
+                                        <div class="info-row">
+                                            <span class="info-label">Return Date:</span>
+                                            <span class="info-value"><?php echo date('d M Y', strtotime($pickup['expected_return_date'])); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if ($pickup['actual_return_date']): ?>
+                                        <div class="info-row">
+                                            <span class="info-label">Returned:</span>
+                                            <span class="info-value"><?php echo date('d M Y', strtotime($pickup['actual_return_date'])); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="card-actions">
+                                    <button class="action-btn view-btn" title="View Details">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                    <?php if ($pickup['status'] === 'Picked Up'): ?>
                                         <button class="action-btn return-btn" title="Mark as Returned">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M9 18l6-6-6-6"></path>
@@ -332,12 +415,12 @@ require_once __DIR__ . '/../component/header.php';
                                         </button>
                                     <?php endif; ?>
                                 </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 </div>
 <?php require __DIR__ . '/../component/footer.php'; ?>
