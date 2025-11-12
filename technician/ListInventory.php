@@ -362,6 +362,5 @@ require_once __DIR__ . '/../component/header.php';
         <?php endif; ?>
     </div>
 </div>
-<?php require __DIR__ . '/../component/footer.php'; ?>
 </body>
 </html>
