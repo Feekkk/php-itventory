@@ -21,26 +21,20 @@ require_once __DIR__ . '/../component/header.php';
 ?>
 
     <div class="container">
-        <!-- Welcome Section -->
-        <div class="welcome-section">
-            <div class="welcome-content">
-                <h1>Welcome back, <?php echo htmlspecialchars(explode(' ', $user['full_name'])[0]); ?>!</h1>
-                <p>Manage your IT equipment inventory and reservations</p>
-            </div>
-            <div class="welcome-info">
-                <div class="info-item">
-                    <span class="info-label">Staff ID</span>
-                    <span class="info-value"><?php echo htmlspecialchars($user['staff_id']); ?></span>
+        <div class="dashboard-layout">
+            <div class="dashboard-main">
+                <!-- Welcome Section -->
+                <div class="welcome-section">
+                    <div class="welcome-content">
+                        <h1>Welcome back, <?php echo htmlspecialchars(explode(' ', $user['full_name'])[0]); ?>!</h1>
+                        <p>Manage your IT equipment inventory and reservations</p>
+                    </div>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">Email</span>
-                    <span class="info-value"><?php echo htmlspecialchars($user['email']); ?></span>
-                </div>
-            </div>
-        </div>
 
-        <!-- Quick Actions Grid -->
-        <div class="dashboard-grid">
+                <!-- Quick Actions Section -->
+                <div class="quick-actions-section">
+                    <h2 class="section-title">Quick Actions</h2>
+                    <div class="dashboard-grid">
             <a href="ListInventory.php" class="dashboard-card">
                 <div class="card-icon inventory">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -116,6 +110,60 @@ require_once __DIR__ . '/../component/header.php';
                     </svg>
                 </div>
             </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sticky User Info Card -->
+            <div class="user-info-card">
+                <div class="user-info-header">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <h3>User Information</h3>
+                </div>
+                <div class="user-info-body">
+                    <div class="user-info-item">
+                        <div class="user-info-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </div>
+                        <div class="user-info-content">
+                            <strong>Full Name</strong>
+                            <p><?php echo htmlspecialchars($user['full_name']); ?></p>
+                        </div>
+                    </div>
+                    <div class="user-info-item">
+                        <div class="user-info-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                        </div>
+                        <div class="user-info-content">
+                            <strong>Staff ID</strong>
+                            <p><?php echo htmlspecialchars($user['staff_id']); ?></p>
+                        </div>
+                    </div>
+                    <div class="user-info-item">
+                        <div class="user-info-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
+                        </div>
+                        <div class="user-info-content">
+                            <strong>Email</strong>
+                            <p><?php echo htmlspecialchars($user['email']); ?></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <?php require __DIR__ . '/../component/footer.php'; ?>
