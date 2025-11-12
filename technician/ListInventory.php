@@ -76,7 +76,7 @@ if ($has_table) {
     $conn->close();
 } else {
     // Sample data if table doesn't exist
-    $inventory_items = [
+    $all_sample_items = [
         [
             'equipment_id' => 'EQ001',
             'equipment_name' => 'Dell Latitude 5520 Laptop',
@@ -167,6 +167,8 @@ if ($has_table) {
         ]
     ];
     
+    $inventory_items = $all_sample_items;
+    
     // Apply filters to sample data
     if (!empty($search)) {
         $inventory_items = array_filter($inventory_items, function($item) use ($search) {
@@ -196,6 +198,36 @@ if ($has_table) {
 $categories = ['Laptops', 'Projectors', 'Monitors', 'Printers', 'Tablets', 'Accessories', 'Cables & Adapters', 'Networking', 'Audio/Visual'];
 $statuses = ['Available', 'In Use', 'Maintenance', 'Reserved'];
 
+// Calculate category counts
+$category_counts = [];
+foreach ($categories as $cat) {
+    $category_counts[$cat] = 0;
+}
+
+// Count items by category (use all items, not filtered)
+if ($has_table) {
+    // Get counts from database (all items, not filtered)
+    $count_conn = getDBConnection();
+    foreach ($categories as $cat) {
+        $count_sql = "SELECT COUNT(*) as count FROM inventory WHERE category = ?";
+        $count_stmt = $count_conn->prepare($count_sql);
+        $count_stmt->bind_param("s", $cat);
+        $count_stmt->execute();
+        $count_result = $count_stmt->get_result();
+        $category_counts[$cat] = $count_result->fetch_assoc()['count'];
+        $count_stmt->close();
+    }
+    $count_conn->close();
+} else {
+    // Count from all sample items (before filtering)
+    foreach ($all_sample_items as $item) {
+        $cat = $item['category'] ?? '';
+        if (isset($category_counts[$cat])) {
+            $category_counts[$cat]++;
+        }
+    }
+}
+
 // Set active page and title for header component
 $activePage = 'inventory';
 $pageTitle = 'List Inventory';
@@ -210,6 +242,18 @@ require_once __DIR__ . '/../component/header.php';
     <div class="page-header">
         <h1>Equipment Inventory</h1>
         <p class="page-subtitle">Browse and manage all IT equipment available in the department</p>
+    </div>
+
+    <!-- Category Count Cards -->
+    <div class="category-cards">
+        <?php foreach ($categories as $cat): ?>
+            <a href="?category=<?php echo urlencode($cat); ?>" class="category-card">
+                <div class="category-card-content">
+                    <h3 class="category-name"><?php echo htmlspecialchars($cat); ?></h3>
+                    <p class="category-count"><?php echo $category_counts[$cat] ?? 0; ?> items</p>
+                </div>
+            </a>
+        <?php endforeach; ?>
     </div>
 
     <!-- Search and Filter Section -->
@@ -362,5 +406,6 @@ require_once __DIR__ . '/../component/header.php';
         <?php endif; ?>
     </div>
 </div>
+<?php require __DIR__ . '/../component/footer.php'; ?>
 </body>
 </html>
