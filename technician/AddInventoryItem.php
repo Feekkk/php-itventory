@@ -154,7 +154,8 @@ require_once __DIR__ . '/../component/header.php';
         </div>
     <?php endif; ?>
 
-    <div class="form-wrapper">
+    <div class="content-layout">
+        <div class="form-wrapper">
         <form id="addInventoryForm" method="POST" class="inventory-form">
             <div class="form-section">
                 <h2 class="section-title">Basic Information</h2>
@@ -283,6 +284,84 @@ require_once __DIR__ . '/../component/header.php';
                 <a href="ListInventory.php" class="btn-cancel">Cancel</a>
             </div>
         </form>
+        </div>
+
+        <div class="notice-panel">
+            <div class="notice-header">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                </svg>
+                <h3>Important Notice</h3>
+            </div>
+            <div class="notice-content">
+                <div class="notice-item">
+                    <div class="notice-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                    </div>
+                    <div class="notice-text">
+                        <strong>Equipment ID</strong>
+                        <p>Must be unique. Check existing inventory before assigning a new ID.</p>
+                    </div>
+                </div>
+
+                <div class="notice-item">
+                    <div class="notice-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                    </div>
+                    <div class="notice-text">
+                        <strong>Required Fields</strong>
+                        <p>Equipment ID, Name, Category, and Status are mandatory fields.</p>
+                    </div>
+                </div>
+
+                <div class="notice-item">
+                    <div class="notice-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"></path>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                        </svg>
+                    </div>
+                    <div class="notice-text">
+                        <strong>Accuracy Matters</strong>
+                        <p>Double-check all information before submitting. Incorrect data may cause inventory discrepancies.</p>
+                    </div>
+                </div>
+
+                <div class="notice-item">
+                    <div class="notice-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                    </div>
+                    <div class="notice-text">
+                        <strong>Serial Numbers</strong>
+                        <p>Include serial numbers when available for better equipment tracking.</p>
+                    </div>
+                </div>
+
+                <div class="notice-item">
+                    <div class="notice-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                    </div>
+                    <div class="notice-text">
+                        <strong>Location Details</strong>
+                        <p>Specify the exact location where the equipment is stored or currently located.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 <?php require __DIR__ . '/../component/footer.php'; ?>

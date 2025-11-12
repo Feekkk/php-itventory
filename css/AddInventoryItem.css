@@ -1,7 +1,7 @@
 /* Add Inventory Item Form Styles */
 
 .container {
-    max-width: 900px;
+    max-width: 1400px;
     margin: 1.5rem auto;
     padding: 0 2rem;
 }
@@ -51,6 +51,14 @@
 .back-btn:hover {
     border-color: #1e1e1e;
     background: #f9fafb;
+}
+
+/* Content Layout */
+.content-layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 2rem;
+    align-items: start;
 }
 
 /* Form Wrapper */
@@ -268,10 +276,113 @@
     color: #1e1e1e;
 }
 
+/* Notice Panel */
+.notice-panel {
+    position: sticky;
+    top: 1.5rem;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    max-height: calc(100vh - 3rem);
+    display: flex;
+    flex-direction: column;
+}
+
+.notice-header {
+    background: #f9fafb;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.notice-header svg {
+    color: #1e1e1e;
+    flex-shrink: 0;
+}
+
+.notice-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e1e1e;
+    margin: 0;
+}
+
+.notice-content {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.notice-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid #f4f6f8;
+}
+
+.notice-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.notice-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: #f4f6f8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #1e1e1e;
+}
+
+.notice-text {
+    flex: 1;
+}
+
+.notice-text strong {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e1e1e;
+    margin-bottom: 0.375rem;
+}
+
+.notice-text p {
+    font-size: 0.8rem;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0;
+}
+
 /* Responsive Design */
+@media (max-width: 1200px) {
+    .content-layout {
+        grid-template-columns: 1fr 320px;
+        gap: 1.5rem;
+    }
+}
+
 @media (max-width: 968px) {
     .container {
         padding: 0 1rem;
+    }
+
+    .content-layout {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .notice-panel {
+        position: relative;
+        top: 0;
+        max-height: none;
     }
 
     .header-content {
