@@ -29,6 +29,12 @@
     font-size: 1rem;
 }
 
+.add-inventory-dropdown {
+    position: relative;
+    display: inline-block;
+    z-index: 1000;
+}
+
 .add-inventory-btn {
     display: flex;
     align-items: center;
@@ -41,7 +47,7 @@
     font-size: 0.95rem;
     font-weight: 600;
     font-family: "Poppins", sans-serif;
-    text-decoration: none;
+    cursor: pointer;
     transition: all 0.2s ease;
     white-space: nowrap;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -59,6 +65,80 @@
 
 .add-inventory-btn svg {
     flex-shrink: 0;
+}
+
+.dropdown-arrow {
+    margin-left: 0.25rem;
+    transition: transform 0.2s ease;
+}
+
+.add-inventory-dropdown.active .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.add-inventory-dropdown .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    width: fit-content;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+    z-index: 1001;
+    overflow: hidden;
+    display: block;
+    padding: 0;
+    margin: 0;
+    height: auto;
+    max-height: none;
+}
+
+.add-inventory-dropdown.active .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    display: block;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    color: #1e1e1e;
+    text-decoration: none;
+    transition: background 0.2s ease;
+    white-space: nowrap;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.dropdown-item:not(:last-child) {
+    border-bottom: 1px solid #f4f6f8;
+}
+
+.dropdown-item:hover {
+    background: #f9fafb;
+}
+
+.dropdown-item svg {
+    flex-shrink: 0;
+    color: #6b7280;
+}
+
+.dropdown-item:hover svg {
+    color: #1e1e1e;
+}
+
+.dropdown-item span {
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
 /* Category Count Cards */
@@ -146,8 +226,8 @@
 
 .search-input:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: #1e1e1e;
+    box-shadow: 0 0 0 3px rgba(30, 30, 30, 0.1);
 }
 
 .filter-group {
@@ -172,8 +252,8 @@
 
 .filter-select:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: #1e1e1e;
+    box-shadow: 0 0 0 3px rgba(30, 30, 30, 0.1);
 }
 
 .filter-btn {
@@ -181,7 +261,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.875rem 1.5rem;
-    background: #3b82f6;
+    background: #1e1e1e;
     color: #ffffff;
     border: none;
     border-radius: 8px;
@@ -193,9 +273,9 @@
 }
 
 .filter-btn:hover {
-    background: #2563eb;
+    background: #000000;
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .filter-btn:active {
@@ -283,7 +363,7 @@
 .equipment-id {
     font-family: 'Courier New', monospace;
     font-weight: 600;
-    color: #3b82f6;
+    color: #1e1e1e;
     font-size: 0.9rem;
 }
 
@@ -311,56 +391,9 @@
     font-size: 0.85rem;
     font-weight: 500;
     text-transform: capitalize;
-}
-
-.category-laptops {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.category-projectors {
-    background: #fce7f3;
-    color: #9f1239;
-}
-
-.category-monitors {
-    background: #e0e7ff;
-    color: #3730a3;
-}
-
-.category-printers {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.category-tablets {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.category-accessories {
-    background: #f3e8ff;
-    color: #6b21a8;
-}
-
-.category-cables-adapters {
-    background: #ffe4e6;
-    color: #991b1b;
-}
-
-.category-networking {
-    background: #e0f2fe;
-    color: #0c4a6e;
-}
-
-.category-audiovisual {
-    background: #fef2f2;
-    color: #7f1d1d;
-}
-
-.category-other {
-    background: #f3f4f6;
-    color: #374151;
+    background: #f4f6f8;
+    color: #1e1e1e;
+    border: 1px solid #e5e7eb;
 }
 
 .brand-model {
@@ -392,31 +425,9 @@
     font-size: 0.85rem;
     font-weight: 600;
     text-transform: capitalize;
-}
-
-.status-available {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.status-in-use {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-.status-maintenance {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.status-reserved {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.status-unknown {
-    background: #f3f4f6;
-    color: #6b7280;
+    background: #f4f6f8;
+    color: #1e1e1e;
+    border: 1px solid #e5e7eb;
 }
 
 .location {
@@ -444,21 +455,21 @@
 }
 
 .view-btn {
-    color: #3b82f6;
+    color: #1e1e1e;
 }
 
 .view-btn:hover {
-    background: #eff6ff;
-    color: #2563eb;
+    background: #f4f6f8;
+    color: #000000;
 }
 
 .reserve-btn {
-    color: #10b981;
+    color: #1e1e1e;
 }
 
 .reserve-btn:hover {
-    background: #ecfdf5;
-    color: #059669;
+    background: #f4f6f8;
+    color: #000000;
 }
 
 /* Empty State */

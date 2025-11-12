@@ -68,5 +68,46 @@ document.addEventListener('DOMContentLoaded', function() {
             // window.location.href = `equipment-details.php?id=${equipmentId}`;
         });
     });
+
+    // Add Inventory Dropdown
+    const addInventoryBtn = document.getElementById('addInventoryBtn');
+    const addInventoryDropdown = document.getElementById('addInventoryDropdown');
+    const dropdownContainer = document.querySelector('.add-inventory-dropdown');
+
+    if (addInventoryBtn && addInventoryDropdown && dropdownContainer) {
+        // Toggle dropdown
+        addInventoryBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropdownContainer.classList.toggle('active');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (dropdownContainer && !dropdownContainer.contains(e.target)) {
+                dropdownContainer.classList.remove('active');
+            }
+        });
+
+        // Close dropdown when clicking on a dropdown item (but allow navigation)
+        const dropdownItems = addInventoryDropdown.querySelectorAll('.dropdown-item');
+        dropdownItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                // Allow navigation, just close dropdown after a short delay
+                setTimeout(function() {
+                    if (dropdownContainer) {
+                        dropdownContainer.classList.remove('active');
+                    }
+                }, 100);
+            });
+        });
+
+        // Close dropdown on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && dropdownContainer) {
+                dropdownContainer.classList.remove('active');
+            }
+        });
+    }
 });
 

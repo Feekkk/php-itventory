@@ -245,13 +245,35 @@ require_once __DIR__ . '/../component/header.php';
                 <h1>Equipment Inventory</h1>
                 <p class="page-subtitle">Browse and manage all IT equipment available in the department</p>
             </div>
-            <a href="AddInventoryItem.php" class="add-inventory-btn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                <span>Add Inventory</span>
-            </a>
+            <div class="add-inventory-dropdown">
+                <button type="button" class="add-inventory-btn" id="addInventoryBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Add Inventory</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dropdown-arrow">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+                <div class="dropdown-menu" id="addInventoryDropdown">
+                    <a href="AddInventoryItem.php" class="dropdown-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="5" width="18" height="11" rx="1.5"></rect>
+                            <path d="M4 17h16l1 2H3l1-2z"></path>
+                        </svg>
+                        <span>Add Item</span>
+                    </a>
+                    <a href="AddCategoriesItem.php" class="dropdown-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="3" x2="9" y2="21"></line>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                        </svg>
+                        <span>Add Category</span>
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
