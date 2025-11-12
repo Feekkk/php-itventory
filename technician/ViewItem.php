@@ -9,6 +9,48 @@ if (!isLoggedIn()) {
     exit();
 }
 
+// Handle AJAX status update request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_status') {
+    header('Content-Type: application/json');
+    
+    $equipment_id = isset($_POST['equipment_id']) ? trim($_POST['equipment_id']) : '';
+    $new_status = isset($_POST['status']) ? trim($_POST['status']) : '';
+    
+    if (empty($equipment_id) || empty($new_status)) {
+        echo json_encode(['success' => false, 'message' => 'Missing required parameters']);
+        exit();
+    }
+    
+    $valid_statuses = ['Available', 'In Use', 'Maintenance', 'Reserved'];
+    if (!in_array($new_status, $valid_statuses)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid status']);
+        exit();
+    }
+    
+    try {
+        $conn = getDBConnection();
+        
+        $update_stmt = $conn->prepare("UPDATE inventory SET status = ? WHERE equipment_id = ?");
+        $update_stmt->bind_param("ss", $new_status, $equipment_id);
+        
+        if ($update_stmt->execute()) {
+            $update_stmt->close();
+            $conn->close();
+            echo json_encode(['success' => true, 'message' => 'Status updated successfully']);
+        } else {
+            $update_stmt->close();
+            $conn->close();
+            echo json_encode(['success' => false, 'message' => 'Failed to update status']);
+        }
+    } catch (Exception $e) {
+        if (isset($conn)) {
+            $conn->close();
+        }
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    }
+    exit();
+}
+
 $user = getUserData();
 $error = '';
 $item = null;
@@ -187,6 +229,18 @@ require_once __DIR__ . '/../component/header.php';
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Note Section -->
+        <div class="note-section">
+            <div class="note-content">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <p><strong>Note:</strong> Technicians can only change the status of equipment items. All other information is read-only.</p>
             </div>
         </div>
     <?php endif; ?>

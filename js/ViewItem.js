@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('action', 'update_status');
 
         // Send AJAX request
-        fetch('ListInventory.php', {
+        fetch('ViewItem.php', {
             method: 'POST',
             body: formData
         })
