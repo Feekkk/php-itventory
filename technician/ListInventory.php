@@ -475,8 +475,12 @@ require_once __DIR__ . '/../component/header.php';
                                 </div>
                             </td>
                             <td>
-                                <span class="category-badge category-<?php echo strtolower(str_replace([' ', '&'], ['-', ''], $item['category'] ?? 'other')); ?>">
-                                    <?php echo htmlspecialchars($item['category'] ?? 'N/A'); ?>
+                                <?php
+                                $category_name = $item['category'] ?? 'other';
+                                $category_class = strtolower(str_replace([' ', '&', '/'], ['-', '', '-'], $category_name));
+                                ?>
+                                <span class="category-badge category-<?php echo htmlspecialchars($category_class); ?>">
+                                    <?php echo htmlspecialchars($category_name); ?>
                                 </span>
                             </td>
                             <td>

@@ -396,6 +396,72 @@
     border: 1px solid #e5e7eb;
 }
 
+/* Category Badge Colors */
+.category-badge.category-laptops,
+.category-badge.category-laptop {
+    background: #dbeafe;
+    color: #1e40af;
+    border-color: #93c5fd;
+}
+
+.category-badge.category-projectors,
+.category-badge.category-projector {
+    background: #e9d5ff;
+    color: #6b21a8;
+    border-color: #c084fc;
+}
+
+.category-badge.category-monitors,
+.category-badge.category-monitor {
+    background: #cffafe;
+    color: #0e7490;
+    border-color: #67e8f9;
+}
+
+.category-badge.category-printers,
+.category-badge.category-printer {
+    background: #fed7aa;
+    color: #9a3412;
+    border-color: #fdba74;
+}
+
+.category-badge.category-tablets,
+.category-badge.category-tablet {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #6ee7b7;
+}
+
+.category-badge.category-accessories,
+.category-badge.category-accessory {
+    background: #fce7f3;
+    color: #9f1239;
+    border-color: #f9a8d4;
+}
+
+.category-badge.category-cables-adapters,
+.category-badge.category-cables-adapter {
+    background: #ccfbf1;
+    color: #134e4a;
+    border-color: #5eead4;
+}
+
+.category-badge.category-networking,
+.category-badge.category-network {
+    background: #e0e7ff;
+    color: #3730a3;
+    border-color: #a5b4fc;
+}
+
+.category-badge.category-audiovisual,
+.category-badge.category-audio-visual,
+.category-badge.category-audio,
+.category-badge.category-visual {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
+}
+
 .brand-model {
     display: flex;
     flex-direction: column;
@@ -428,6 +494,31 @@
     background: #f4f6f8;
     color: #1e1e1e;
     border: 1px solid #e5e7eb;
+}
+
+/* Status Badge Colors */
+.status-badge.status-available {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #6ee7b7;
+}
+
+.status-badge.status-in-use {
+    background: #dbeafe;
+    color: #1e40af;
+    border-color: #93c5fd;
+}
+
+.status-badge.status-maintenance {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+.status-badge.status-reserved {
+    background: #e9d5ff;
+    color: #6b21a8;
+    border-color: #c084fc;
 }
 
 .location {
