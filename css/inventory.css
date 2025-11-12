@@ -10,6 +10,13 @@
     margin-bottom: 2rem;
 }
 
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+}
+
 .page-header h1 {
     font-size: 2rem;
     font-weight: 700;
@@ -20,6 +27,38 @@
 .page-subtitle {
     color: #6b7280;
     font-size: 1rem;
+}
+
+.add-inventory-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: #1e1e1e;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-family: "Poppins", sans-serif;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.add-inventory-btn:hover {
+    background: #000000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.add-inventory-btn:active {
+    transform: translateY(0);
+}
+
+.add-inventory-btn svg {
+    flex-shrink: 0;
 }
 
 /* Category Count Cards */
@@ -463,8 +502,18 @@
         padding: 1rem;
     }
     
+    .header-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
     .page-header h1 {
         font-size: 1.75rem;
+    }
+    
+    .add-inventory-btn {
+        width: 100%;
+        justify-content: center;
     }
     
     .category-cards {
