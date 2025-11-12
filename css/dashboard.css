@@ -88,8 +88,8 @@ body {
 
 .logout-btn {
     padding: 0.5rem 1.5rem;
-    background: #2dc48d;
-    color: #0b121b;
+    background: #1e1e1e;
+    color: #ffffff;
     border: none;
     border-radius: 8px;
     font-weight: 600;
@@ -100,7 +100,7 @@ body {
 }
 
 .logout-btn:hover {
-    background: #1fa372;
+    background: #000000;
 }
 
 .container {
@@ -307,14 +307,14 @@ body {
 
 .menu-item:hover {
     background: #f4f6f8;
-    border-left-color: #2dc48d;
-    color: #2dc48d;
+    border-left-color: #1e1e1e;
+    color: #1e1e1e;
 }
 
 .menu-item.active {
-    background: #f0fdf4;
-    border-left-color: #2dc48d;
-    color: #2dc48d;
+    background: #f4f6f8;
+    border-left-color: #1e1e1e;
+    color: #1e1e1e;
     font-weight: 600;
 }
 
