@@ -547,6 +547,10 @@
 
 .view-btn {
     color: #1e1e1e;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .view-btn:hover {

@@ -504,22 +504,12 @@ require_once __DIR__ . '/../component/header.php';
                                 <span class="location"><?php echo htmlspecialchars($item['location'] ?? 'N/A'); ?></span>
                             </td>
                             <td>
-                                <div class="action-buttons">
-                                    <button class="action-btn view-btn" title="View Details">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                            <circle cx="12" cy="12" r="3"></circle>
-                                        </svg>
-                                    </button>
-                                    <?php if (($item['status'] ?? '') === 'Available'): ?>
-                                        <button class="action-btn reserve-btn" title="Reserve">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M4 7h16v11H4z"></path>
-                                                <path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path>
-                                            </svg>
-                                        </button>
-                                    <?php endif; ?>
-                                </div>
+                                <a href="ViewItem.php?id=<?php echo urlencode($item['equipment_id'] ?? ''); ?>" class="action-btn view-btn" title="View Details">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
