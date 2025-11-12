@@ -13,15 +13,80 @@ $error = '';
 $success = '';
 $user = getUserData();
 
-// Categories and statuses
-$categories = ['Laptops', 'Projectors', 'Monitors', 'Printers', 'Tablets', 'Accessories', 'Cables & Adapters', 'Networking', 'Audio/Visual'];
+// Statuses
 $statuses = ['Available', 'In Use', 'Maintenance', 'Reserved'];
+
+// Fetch categories from database
+$categories = [];
+try {
+    $conn = getDBConnection();
+    
+    // Check if categories table exists, create if not
+    $table_check = $conn->query("SHOW TABLES LIKE 'categories'");
+    if (!$table_check || $table_check->num_rows === 0) {
+        // Create categories table
+        $create_categories_sql = "CREATE TABLE IF NOT EXISTS categories (
+            id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            category_name VARCHAR(100) NOT NULL UNIQUE,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_category_name (category_name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        if (!$conn->query($create_categories_sql)) {
+            throw new Exception("Error creating categories table: " . $conn->error);
+        }
+        
+        // Insert default categories
+        $default_categories = [
+            ['Laptops', 'Portable computers and laptops'],
+            ['Projectors', 'Projection equipment and displays'],
+            ['Monitors', 'Computer monitors and displays'],
+            ['Printers', 'Printing equipment'],
+            ['Tablets', 'Tablet devices'],
+            ['Accessories', 'Computer accessories and peripherals'],
+            ['Cables & Adapters', 'Cables, adapters, and connectors'],
+            ['Networking', 'Network equipment and devices'],
+            ['Audio/Visual', 'Audio and visual equipment']
+        ];
+        
+        $insert_stmt = $conn->prepare("INSERT INTO categories (category_name, description) VALUES (?, ?)");
+        foreach ($default_categories as $cat) {
+            $insert_stmt->bind_param("ss", $cat[0], $cat[1]);
+            $insert_stmt->execute();
+        }
+        $insert_stmt->close();
+    }
+    
+    // Fetch categories from database
+    $categories_result = $conn->query("SELECT id, category_name FROM categories ORDER BY category_name ASC");
+    if ($categories_result) {
+        while ($row = $categories_result->fetch_assoc()) {
+            $categories[$row['id']] = $row['category_name'];
+        }
+    }
+    $conn->close();
+} catch (Exception $e) {
+    // If database error, use default categories
+    $categories = [
+        1 => 'Laptops',
+        2 => 'Projectors',
+        3 => 'Monitors',
+        4 => 'Printers',
+        5 => 'Tablets',
+        6 => 'Accessories',
+        7 => 'Cables & Adapters',
+        8 => 'Networking',
+        9 => 'Audio/Visual'
+    ];
+}
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $equipment_id = trim($_POST['equipment_id'] ?? '');
     $equipment_name = trim($_POST['equipment_name'] ?? '');
-    $category = trim($_POST['category'] ?? '');
+    $category_id = trim($_POST['category'] ?? '');
     $brand = trim($_POST['brand'] ?? '');
     $model = trim($_POST['model'] ?? '');
     $serial_number = trim($_POST['serial_number'] ?? '');
@@ -34,23 +99,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Equipment ID is required.';
     } elseif (empty($equipment_name)) {
         $error = 'Equipment name is required.';
-    } elseif (empty($category)) {
+    } elseif (empty($category_id)) {
         $error = 'Category is required.';
+    } elseif (!isset($categories[$category_id])) {
+        $error = 'Invalid category selected.';
     } elseif (empty($status)) {
         $error = 'Status is required.';
     } else {
         try {
             $conn = getDBConnection();
             
+            // Ensure categories table exists
+            $table_check = $conn->query("SHOW TABLES LIKE 'categories'");
+            if (!$table_check || $table_check->num_rows === 0) {
+                $create_categories_sql = "CREATE TABLE IF NOT EXISTS categories (
+                    id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    category_name VARCHAR(100) NOT NULL UNIQUE,
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_category_name (category_name)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+                $conn->query($create_categories_sql);
+            }
+            
             // Check if inventory table exists, create if not
             $table_check = $conn->query("SHOW TABLES LIKE 'inventory'");
             if (!$table_check || $table_check->num_rows === 0) {
-                // Create inventory table
+                // Create inventory table with foreign key
                 $create_table_sql = "CREATE TABLE IF NOT EXISTS inventory (
                     id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                     equipment_id VARCHAR(50) NOT NULL UNIQUE,
                     equipment_name VARCHAR(255) NOT NULL,
-                    category VARCHAR(100) NOT NULL,
+                    category_id INT(11) UNSIGNED NOT NULL,
                     brand VARCHAR(100),
                     model VARCHAR(100),
                     serial_number VARCHAR(100),
@@ -60,8 +141,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_equipment_id (equipment_id),
-                    INDEX idx_category (category),
-                    INDEX idx_status (status)
+                    INDEX idx_category_id (category_id),
+                    INDEX idx_status (status),
+                    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT ON UPDATE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
                 
                 if (!$conn->query($create_table_sql)) {
@@ -69,31 +151,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
-            // Check if equipment_id already exists
-            $check_stmt = $conn->prepare("SELECT id FROM inventory WHERE equipment_id = ?");
-            $check_stmt->bind_param("s", $equipment_id);
-            $check_stmt->execute();
-            $result = $check_stmt->get_result();
+            // Verify category exists
+            $category_check = $conn->prepare("SELECT id FROM categories WHERE id = ?");
+            $category_check->bind_param("i", $category_id);
+            $category_check->execute();
+            $category_result = $category_check->get_result();
             
-            if ($result->num_rows > 0) {
-                $error = 'Equipment ID already exists. Please use a different ID.';
-                $check_stmt->close();
+            if ($category_result->num_rows === 0) {
+                $error = 'Selected category does not exist.';
+                $category_check->close();
+                $conn->close();
             } else {
-                $check_stmt->close();
+                $category_check->close();
                 
-                // Insert new inventory item
-                $insert_stmt = $conn->prepare("INSERT INTO inventory (equipment_id, equipment_name, category, brand, model, serial_number, status, location, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $insert_stmt->bind_param("sssssssss", $equipment_id, $equipment_name, $category, $brand, $model, $serial_number, $status, $location, $description);
+                // Check if equipment_id already exists
+                $check_stmt = $conn->prepare("SELECT id FROM inventory WHERE equipment_id = ?");
+                $check_stmt->bind_param("s", $equipment_id);
+                $check_stmt->execute();
+                $result = $check_stmt->get_result();
                 
-                if ($insert_stmt->execute()) {
-                    $insert_stmt->close();
-                    $conn->close();
-                    setSessionMessage('success', 'Inventory item added successfully!');
-                    header('Location: ListInventory.php');
-                    exit();
+                if ($result->num_rows > 0) {
+                    $error = 'Equipment ID already exists. Please use a different ID.';
+                    $check_stmt->close();
                 } else {
-                    $error = 'Failed to add inventory item: ' . $insert_stmt->error;
-                    $insert_stmt->close();
+                    $check_stmt->close();
+                    
+                    // Insert new inventory item with category_id
+                    $insert_stmt = $conn->prepare("INSERT INTO inventory (equipment_id, equipment_name, category_id, brand, model, serial_number, status, location, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $insert_stmt->bind_param("ssissssss", $equipment_id, $equipment_name, $category_id, $brand, $model, $serial_number, $status, $location, $description);
+                    
+                    if ($insert_stmt->execute()) {
+                        $insert_stmt->close();
+                        $conn->close();
+                        setSessionMessage('success', 'Inventory item added successfully!');
+                        header('Location: ListInventory.php');
+                        exit();
+                    } else {
+                        $error = 'Failed to add inventory item: ' . $insert_stmt->error;
+                        $insert_stmt->close();
+                    }
                 }
             }
             
@@ -189,9 +285,9 @@ require_once __DIR__ . '/../component/header.php';
                         <label for="category">Category <span class="required">*</span></label>
                         <select id="category" name="category" required>
                             <option value="">Select Category</option>
-                            <?php foreach ($categories as $cat): ?>
-                                <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo (isset($_POST['category']) && $_POST['category'] === $cat) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($cat); ?>
+                            <?php foreach ($categories as $cat_id => $cat_name): ?>
+                                <option value="<?php echo htmlspecialchars($cat_id); ?>" <?php echo (isset($_POST['category']) && $_POST['category'] == $cat_id) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($cat_name); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>

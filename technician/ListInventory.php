@@ -28,6 +28,10 @@ $table_check = $conn->query("SHOW TABLES LIKE 'inventory'");
 $has_table = $table_check && $table_check->num_rows > 0;
 
 if ($has_table) {
+    // Check if inventory table has category_id column (new structure) or category column (old structure)
+    $columns_check = $conn->query("SHOW COLUMNS FROM inventory LIKE 'category_id'");
+    $has_category_id = $columns_check && $columns_check->num_rows > 0;
+    
     // Build WHERE clause
     if (!empty($search)) {
         $where[] = "(equipment_name LIKE ? OR equipment_id LIKE ? OR description LIKE ?)";
@@ -39,9 +43,17 @@ if ($has_table) {
     }
     
     if (!empty($category)) {
-        $where[] = "category = ?";
-        $params[] = $category;
-        $types .= 's';
+        if ($has_category_id) {
+            // New structure: use category_id
+            $where[] = "category_id = ?";
+            $params[] = (int)$category;
+            $types .= 'i';
+        } else {
+            // Old structure: use category name
+            $where[] = "category = ?";
+            $params[] = $category;
+            $types .= 's';
+        }
     }
     
     if (!empty($status)) {
@@ -63,8 +75,17 @@ if ($has_table) {
     $total_items = $total_result->fetch_assoc()['total'];
     $count_stmt->close();
     
-    // Get inventory items
-    $sql = "SELECT * FROM inventory $where_clause ORDER BY equipment_name ASC";
+    // Get inventory items with category name
+    if ($has_category_id) {
+        $sql = "SELECT i.*, c.category_name as category 
+                FROM inventory i 
+                LEFT JOIN categories c ON i.category_id = c.id 
+                $where_clause 
+                ORDER BY equipment_name ASC";
+    } else {
+        $sql = "SELECT * FROM inventory $where_clause ORDER BY equipment_name ASC";
+    }
+    
     $stmt = $conn->prepare($sql);
     if (!empty($params)) {
         $stmt->bind_param($types, ...$params);
@@ -194,32 +215,96 @@ if ($has_table) {
     $inventory_items = array_values($inventory_items); // Re-index array
 }
 
-// Get unique categories and statuses for filters
-$categories = ['Laptops', 'Projectors', 'Monitors', 'Printers', 'Tablets', 'Accessories', 'Cables & Adapters', 'Networking', 'Audio/Visual'];
-$statuses = ['Available', 'In Use', 'Maintenance', 'Reserved'];
-
-// Calculate category counts
+// Get categories from database
+$categories = [];
 $category_counts = [];
-foreach ($categories as $cat) {
-    $category_counts[$cat] = 0;
+try {
+    $cat_conn = getDBConnection();
+    
+    // Check if categories table exists
+    $cat_table_check = $cat_conn->query("SHOW TABLES LIKE 'categories'");
+    if ($cat_table_check && $cat_table_check->num_rows > 0) {
+        // Fetch categories from database
+        $cat_result = $cat_conn->query("SELECT id, category_name FROM categories ORDER BY category_name ASC");
+        if ($cat_result) {
+            while ($row = $cat_result->fetch_assoc()) {
+                $categories[$row['id']] = $row['category_name'];
+                $category_counts[$row['category_name']] = 0;
+            }
+        }
+        
+        // Count items by category (use all items, not filtered)
+        if ($has_table) {
+            // Check if inventory table has category_id column
+            $columns_check = $cat_conn->query("SHOW COLUMNS FROM inventory LIKE 'category_id'");
+            $has_category_id = $columns_check && $columns_check->num_rows > 0;
+            
+            if ($has_category_id) {
+                // New structure: count by category_id
+                foreach ($categories as $cat_id => $cat_name) {
+                    $count_sql = "SELECT COUNT(*) as count FROM inventory WHERE category_id = ?";
+                    $count_stmt = $cat_conn->prepare($count_sql);
+                    $count_stmt->bind_param("i", $cat_id);
+                    $count_stmt->execute();
+                    $count_result = $count_stmt->get_result();
+                    $category_counts[$cat_name] = $count_result->fetch_assoc()['count'];
+                    $count_stmt->close();
+                }
+            } else {
+                // Old structure: count by category name
+                foreach ($categories as $cat_id => $cat_name) {
+                    $count_sql = "SELECT COUNT(*) as count FROM inventory WHERE category = ?";
+                    $count_stmt = $cat_conn->prepare($count_sql);
+                    $count_stmt->bind_param("s", $cat_name);
+                    $count_stmt->execute();
+                    $count_result = $count_stmt->get_result();
+                    $category_counts[$cat_name] = $count_result->fetch_assoc()['count'];
+                    $count_stmt->close();
+                }
+            }
+        }
+    } else {
+        // If categories table doesn't exist, use default categories
+        $categories = [
+            1 => 'Laptops',
+            2 => 'Projectors',
+            3 => 'Monitors',
+            4 => 'Printers',
+            5 => 'Tablets',
+            6 => 'Accessories',
+            7 => 'Cables & Adapters',
+            8 => 'Networking',
+            9 => 'Audio/Visual'
+        ];
+        foreach ($categories as $cat_name) {
+            $category_counts[$cat_name] = 0;
+        }
+    }
+    
+    $cat_conn->close();
+} catch (Exception $e) {
+    // Fallback to default categories
+    $categories = [
+        1 => 'Laptops',
+        2 => 'Projectors',
+        3 => 'Monitors',
+        4 => 'Printers',
+        5 => 'Tablets',
+        6 => 'Accessories',
+        7 => 'Cables & Adapters',
+        8 => 'Networking',
+        9 => 'Audio/Visual'
+    ];
+    foreach ($categories as $cat_name) {
+        $category_counts[$cat_name] = 0;
+    }
 }
 
-// Count items by category (use all items, not filtered)
-if ($has_table) {
-    // Get counts from database (all items, not filtered)
-    $count_conn = getDBConnection();
-    foreach ($categories as $cat) {
-        $count_sql = "SELECT COUNT(*) as count FROM inventory WHERE category = ?";
-        $count_stmt = $count_conn->prepare($count_sql);
-        $count_stmt->bind_param("s", $cat);
-        $count_stmt->execute();
-        $count_result = $count_stmt->get_result();
-        $category_counts[$cat] = $count_result->fetch_assoc()['count'];
-        $count_stmt->close();
-    }
-    $count_conn->close();
-} else {
-    // Count from all sample items (before filtering)
+// Get statuses
+$statuses = ['Available', 'In Use', 'Maintenance', 'Reserved'];
+
+// Count from sample data if no database
+if (!$has_table) {
     foreach ($all_sample_items as $item) {
         $cat = $item['category'] ?? '';
         if (isset($category_counts[$cat])) {
@@ -279,11 +364,11 @@ require_once __DIR__ . '/../component/header.php';
 
     <!-- Category Count Cards -->
     <div class="category-cards">
-        <?php foreach ($categories as $cat): ?>
-            <a href="?category=<?php echo urlencode($cat); ?>" class="category-card">
+        <?php foreach ($categories as $cat_id => $cat_name): ?>
+            <a href="?category=<?php echo urlencode($cat_id); ?>" class="category-card">
                 <div class="category-card-content">
-                    <h3 class="category-name"><?php echo htmlspecialchars($cat); ?></h3>
-                    <p class="category-count"><?php echo $category_counts[$cat] ?? 0; ?> items</p>
+                    <h3 class="category-name"><?php echo htmlspecialchars($cat_name); ?></h3>
+                    <p class="category-count"><?php echo $category_counts[$cat_name] ?? 0; ?> items</p>
                 </div>
             </a>
         <?php endforeach; ?>
@@ -309,9 +394,9 @@ require_once __DIR__ . '/../component/header.php';
             <div class="filter-group">
                 <select name="category" class="filter-select">
                     <option value="">All Categories</option>
-                    <?php foreach ($categories as $cat): ?>
-                        <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo $category === $cat ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($cat); ?>
+                    <?php foreach ($categories as $cat_id => $cat_name): ?>
+                        <option value="<?php echo htmlspecialchars($cat_id); ?>" <?php echo $category == $cat_id ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($cat_name); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

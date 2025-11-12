@@ -16,7 +16,7 @@ $user = getUserData();
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $category_name = trim($_POST['category_name'] ?? '');
-    $category_description = trim($_POST['category_description'] ?? '');
+    $description = trim($_POST['category_description'] ?? '');
     
     // Validation
     if (empty($category_name)) {
@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Insert new category
                 $insert_stmt = $conn->prepare("INSERT INTO categories (category_name, description) VALUES (?, ?)");
-                $insert_stmt->bind_param("ss", $category_name, $category_description);
+                $insert_stmt->bind_param("ss", $category_name, $description);
                 
                 if ($insert_stmt->execute()) {
                     $insert_stmt->close();
