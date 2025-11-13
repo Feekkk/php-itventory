@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         exit();
     }
     
-    $valid_statuses = ['Available', 'In Use', 'Maintenance', 'Reserved'];
+    $valid_statuses = ['Available', 'Maintenance', 'Reserved'];
     if (!in_array($new_status, $valid_statuses)) {
         echo json_encode(['success' => false, 'message' => 'Invalid status']);
         exit();
@@ -191,7 +191,6 @@ require_once __DIR__ . '/../component/header.php';
                             <div class="detail-value">
                                 <select class="status-dropdown status-<?php echo $status_class; ?>" data-equipment-id="<?php echo htmlspecialchars($item['equipment_id'] ?? ''); ?>">
                                     <option value="Available" <?php echo ($item['status'] ?? '') === 'Available' ? 'selected' : ''; ?>>Available</option>
-                                    <option value="In Use" <?php echo ($item['status'] ?? '') === 'In Use' ? 'selected' : ''; ?>>In Use</option>
                                     <option value="Maintenance" <?php echo ($item['status'] ?? '') === 'Maintenance' ? 'selected' : ''; ?>>Maintenance</option>
                                     <option value="Reserved" <?php echo ($item['status'] ?? '') === 'Reserved' ? 'selected' : ''; ?>>Reserved</option>
                                 </select>
