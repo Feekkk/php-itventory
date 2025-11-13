@@ -30,6 +30,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     try {
         $conn = getDBConnection();
         
+        // Check current status before allowing update
+        $check_stmt = $conn->prepare("SELECT status FROM inventory WHERE equipment_id = ?");
+        $check_stmt->bind_param("s", $equipment_id);
+        $check_stmt->execute();
+        $check_result = $check_stmt->get_result();
+        
+        if ($check_result->num_rows === 0) {
+            $check_stmt->close();
+            $conn->close();
+            echo json_encode(['success' => false, 'message' => 'Equipment not found']);
+            exit();
+        }
+        
+        $current_status = $check_result->fetch_assoc()['status'];
+        $check_stmt->close();
+        
+        // Prevent status change if current status is "hand over"
+        if ($current_status === 'hand over') {
+            $conn->close();
+            echo json_encode(['success' => false, 'message' => 'Cannot change status. Equipment is currently in handover and must be returned first.']);
+            exit();
+        }
+        
         $update_stmt = $conn->prepare("UPDATE inventory SET status = ? WHERE equipment_id = ?");
         $update_stmt->bind_param("ss", $new_status, $equipment_id);
         
@@ -143,10 +166,13 @@ require_once __DIR__ . '/../component/header.php';
                             <p class="equipment-id">ID: <?php echo htmlspecialchars($item['equipment_id'] ?? 'N/A'); ?></p>
                         </div>
                         <?php
-                        $status_class = strtolower(str_replace(' ', '-', $item['status'] ?? 'unknown'));
+                        $current_status = $item['status'] ?? 'unknown';
+                        $status_class = strtolower(str_replace(' ', '-', $current_status));
+                        // Handle "hand over" status display
+                        $display_status = ($current_status === 'hand over') ? 'Hand Over' : $current_status;
                         ?>
                         <span class="status-badge status-<?php echo $status_class; ?>">
-                            <?php echo htmlspecialchars($item['status'] ?? 'N/A'); ?>
+                            <?php echo htmlspecialchars($display_status); ?>
                         </span>
                     </div>
                 </div>
@@ -189,11 +215,25 @@ require_once __DIR__ . '/../component/header.php';
                         <div class="detail-item">
                             <div class="detail-label">Status</div>
                             <div class="detail-value">
-                                <select class="status-dropdown status-<?php echo $status_class; ?>" data-equipment-id="<?php echo htmlspecialchars($item['equipment_id'] ?? ''); ?>">
-                                    <option value="Available" <?php echo ($item['status'] ?? '') === 'Available' ? 'selected' : ''; ?>>Available</option>
-                                    <option value="Maintenance" <?php echo ($item['status'] ?? '') === 'Maintenance' ? 'selected' : ''; ?>>Maintenance</option>
-                                    <option value="Reserved" <?php echo ($item['status'] ?? '') === 'Reserved' ? 'selected' : ''; ?>>Reserved</option>
-                                </select>
+                                <?php 
+                                $detail_status = $item['status'] ?? '';
+                                $is_handover = ($detail_status === 'hand over');
+                                $detail_status_class = strtolower(str_replace(' ', '-', $detail_status));
+                                ?>
+                                <?php if ($is_handover): ?>
+                                    <div class="status-readonly">
+                                        <span class="status-badge status-hand-over">Hand Over</span>
+                                        <small class="status-note">
+                                            Status cannot be changed. Equipment must be returned first through the handover system.
+                                        </small>
+                                    </div>
+                                <?php else: ?>
+                                    <select class="status-dropdown status-<?php echo $detail_status_class; ?>" data-equipment-id="<?php echo htmlspecialchars($item['equipment_id'] ?? ''); ?>">
+                                        <option value="Available" <?php echo $detail_status === 'Available' ? 'selected' : ''; ?>>Available</option>
+                                        <option value="Maintenance" <?php echo $detail_status === 'Maintenance' ? 'selected' : ''; ?>>Maintenance</option>
+                                        <option value="Reserved" <?php echo $detail_status === 'Reserved' ? 'selected' : ''; ?>>Reserved</option>
+                                    </select>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -239,7 +279,7 @@ require_once __DIR__ . '/../component/header.php';
                     <line x1="12" y1="16" x2="12" y2="12"></line>
                     <line x1="12" y1="8" x2="12.01" y2="8"></line>
                 </svg>
-                <p><strong>Note:</strong> Technicians can only change the status of equipment items. All other information is read-only.</p>
+                <p><strong>Note:</strong> Technicians can only change the status of equipment items. All other information is read-only. Equipment with "Hand Over" status cannot have its status changed until it is returned.</p>
             </div>
         </div>
     <?php endif; ?>

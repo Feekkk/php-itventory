@@ -194,6 +194,28 @@
     border-color: #c084fc;
 }
 
+.status-badge.status-hand-over,
+.status-badge.status-handover {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+/* Status Readonly */
+.status-readonly {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.status-note {
+    display: block;
+    margin-top: 0.5rem;
+    color: #6b7280;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
 /* Status Dropdown */
 .status-dropdown {
     padding: 0.5rem 0.75rem;
@@ -243,6 +265,13 @@
     background-color: #e9d5ff;
     color: #6b21a8;
     border-color: #c084fc;
+}
+
+.status-dropdown.status-hand-over,
+.status-dropdown.status-handover {
+    background-color: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
 }
 
 /* Category Badge */
