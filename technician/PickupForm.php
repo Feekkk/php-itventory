@@ -12,7 +12,98 @@ if (!isLoggedIn()) {
 $user = getUserData();
 $handover = null;
 $equipment = null;
+$handoverStaffName = null;
+$returnStaffName = null;
 $error = '';
+$success = '';
+
+// Handle handover action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'handover') {
+    $handover_id = isset($_POST['handover_id']) ? trim($_POST['handover_id']) : '';
+    $agree_terms = isset($_POST['agreeTerms']) && $_POST['agreeTerms'] === 'on';
+    
+    if (empty($handover_id)) {
+        $error = 'Handover ID is required.';
+    } elseif (!$agree_terms) {
+        $error = 'You must agree to the terms and conditions to proceed.';
+    } elseif (!$user || empty($user['staff_id'])) {
+        $error = 'Staff ID is required. Please log in again.';
+    } else {
+        try {
+            $conn = getDBConnection();
+            
+            // Check if handover table exists
+            $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
+            if ($table_check && $table_check->num_rows > 0) {
+                // Check if columns exist, if not add them
+                $columns_check = $conn->query("SHOW COLUMNS FROM handover LIKE 'handoverStaff'");
+                if (!$columns_check || $columns_check->num_rows === 0) {
+                    // Add handoverStaff column
+                    $conn->query("ALTER TABLE handover ADD COLUMN handoverStaff VARCHAR(50) COMMENT 'Staff ID who performed the handover' AFTER handoverStat");
+                    $conn->query("ALTER TABLE handover ADD INDEX idx_handoverStaff (handoverStaff)");
+                }
+                
+                $columns_check2 = $conn->query("SHOW COLUMNS FROM handover LIKE 'returnStaff'");
+                if (!$columns_check2 || $columns_check2->num_rows === 0) {
+                    // Add returnStaff column
+                    $conn->query("ALTER TABLE handover ADD COLUMN returnStaff VARCHAR(50) COMMENT 'Staff ID who received the return' AFTER handoverStaff");
+                    $conn->query("ALTER TABLE handover ADD INDEX idx_returnStaff (returnStaff)");
+                }
+                
+                // Check current handover status
+                $check_stmt = $conn->prepare("SELECT handoverStat, equipment_id FROM handover WHERE handoverID = ?");
+                $check_stmt->bind_param("i", $handover_id);
+                $check_stmt->execute();
+                $check_result = $check_stmt->get_result();
+                
+                if ($check_result->num_rows === 1) {
+                    $handover_data = $check_result->fetch_assoc();
+                    
+                    if ($handover_data['handoverStat'] !== 'pending') {
+                        $error = 'This handover has already been processed.';
+                    } else {
+                        // Start transaction
+                        $conn->autocommit(FALSE);
+                        
+                        try {
+                            // Update handover status and staff
+                            $update_stmt = $conn->prepare("UPDATE handover SET handoverStat = 'picked_up', handoverStaff = ? WHERE handoverID = ?");
+                            $update_stmt->bind_param("si", $user['staff_id'], $handover_id);
+                            
+                            if (!$update_stmt->execute()) {
+                                throw new Exception("Failed to update handover: " . $update_stmt->error);
+                            }
+                            $update_stmt->close();
+                            
+                            // Commit transaction
+                            $conn->commit();
+                            $conn->autocommit(TRUE);
+                            
+                            setSessionMessage('success', 'Equipment handover completed successfully.');
+                            header('Location: PickupForm.php?id=' . $handover_id);
+                            exit();
+                        } catch (Exception $e) {
+                            // Rollback transaction
+                            $conn->rollback();
+                            $conn->autocommit(TRUE);
+                            $error = 'Database error: ' . $e->getMessage();
+                        }
+                    }
+                } else {
+                    $error = 'Handover record not found.';
+                }
+                
+                $check_stmt->close();
+            } else {
+                $error = 'Handover table does not exist.';
+            }
+            
+            $conn->close();
+        } catch (Exception $e) {
+            $error = 'Database error: ' . $e->getMessage();
+        }
+    }
+}
 
 // Get handover ID from URL
 $handover_id = isset($_GET['id']) ? trim($_GET['id']) : '';
@@ -26,6 +117,21 @@ if (empty($handover_id)) {
         // Check if handover table exists
         $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
         if ($table_check && $table_check->num_rows > 0) {
+            // Check if columns exist, if not add them
+            $columns_check = $conn->query("SHOW COLUMNS FROM handover LIKE 'handoverStaff'");
+            if (!$columns_check || $columns_check->num_rows === 0) {
+                // Add handoverStaff column
+                $conn->query("ALTER TABLE handover ADD COLUMN handoverStaff VARCHAR(50) COMMENT 'Staff ID who performed the handover' AFTER handoverStat");
+                $conn->query("ALTER TABLE handover ADD INDEX idx_handoverStaff (handoverStaff)");
+            }
+            
+            $columns_check2 = $conn->query("SHOW COLUMNS FROM handover LIKE 'returnStaff'");
+            if (!$columns_check2 || $columns_check2->num_rows === 0) {
+                // Add returnStaff column
+                $conn->query("ALTER TABLE handover ADD COLUMN returnStaff VARCHAR(50) COMMENT 'Staff ID who received the return' AFTER handoverStaff");
+                $conn->query("ALTER TABLE handover ADD INDEX idx_returnStaff (returnStaff)");
+            }
+            
             $stmt = $conn->prepare("SELECT * FROM handover WHERE handoverID = ?");
             $stmt->bind_param("i", $handover_id);
             $stmt->execute();
@@ -58,6 +164,35 @@ if (empty($handover_id)) {
                     
                     $equipment_stmt->close();
                 }
+                
+                // Fetch staff names from technician table
+                if (!empty($handover['handoverStaff'])) {
+                    $staff_stmt = $conn->prepare("SELECT full_name FROM technician WHERE staff_id = ?");
+                    $staff_stmt->bind_param("s", $handover['handoverStaff']);
+                    $staff_stmt->execute();
+                    $staff_result = $staff_stmt->get_result();
+                    
+                    if ($staff_result->num_rows === 1) {
+                        $staff_row = $staff_result->fetch_assoc();
+                        $handoverStaffName = $staff_row['full_name'];
+                    }
+                    
+                    $staff_stmt->close();
+                }
+                
+                if (!empty($handover['returnStaff'])) {
+                    $staff_stmt = $conn->prepare("SELECT full_name FROM technician WHERE staff_id = ?");
+                    $staff_stmt->bind_param("s", $handover['returnStaff']);
+                    $staff_stmt->execute();
+                    $staff_result = $staff_stmt->get_result();
+                    
+                    if ($staff_result->num_rows === 1) {
+                        $staff_row = $staff_result->fetch_assoc();
+                        $returnStaffName = $staff_row['full_name'];
+                    }
+                    
+                    $staff_stmt->close();
+                }
             } else {
                 $error = 'Handover record not found.';
             }
@@ -73,9 +208,24 @@ if (empty($handover_id)) {
     }
 }
 
+// Get session messages
+$message = getSessionMessage();
+if ($message) {
+    if ($message['type'] === 'success') {
+        $success = $message['content'];
+    } else {
+        $error = $message['content'];
+    }
+}
+
+// Determine page title based on handover status
+$pageTitle = 'Handover Details';
+if ($handover && $handover['handoverStat'] !== 'pending') {
+    $pageTitle = 'View Handover Details';
+}
+
 // Set active page and title for header component
 $activePage = 'pickup';
-$pageTitle = 'Handover Details';
 $additionalCSS = ['../css/PickupForm.css'];
 $additionalJS = ['../js/PickupForm.js'];
 
@@ -93,9 +243,23 @@ require_once __DIR__ . '/../component/header.php';
                     </svg>
                     <span>Back to Pickup</span>
                 </a>
-                <h1>Handover Details</h1>
+                <h1><?php echo htmlspecialchars($pageTitle); ?></h1>
                 <?php if ($handover): ?>
-                    <p class="page-subtitle">View and manage handover details</p>
+                    <?php
+                    $status_map = [
+                        'pending' => 'Pending',
+                        'picked_up' => 'Picked Up',
+                        'returned' => 'Returned'
+                    ];
+                    $display_status = $status_map[$handover['handoverStat']] ?? ucfirst($handover['handoverStat']);
+                    ?>
+                    <p class="page-subtitle">
+                        <?php if ($handover['handoverStat'] === 'pending'): ?>
+                            Review and confirm handover details
+                        <?php else: ?>
+                            View handover details - Status: <?php echo htmlspecialchars($display_status); ?>
+                        <?php endif; ?>
+                    </p>
                 <?php endif; ?>
             </div>
         </div>
@@ -105,7 +269,17 @@ require_once __DIR__ . '/../component/header.php';
         <div class="error-message">
             <?php echo htmlspecialchars($error); ?>
         </div>
-    <?php elseif ($handover && $equipment): ?>
+    <?php endif; ?>
+    <?php if ($success): ?>
+        <div class="success-message">
+            <?php echo htmlspecialchars($success); ?>
+        </div>
+    <?php endif; ?>
+    <?php if ($handover && $equipment): ?>
+        <?php
+        // Determine if handover is pending (show agreement) or already processed (show details only)
+        $is_pending = ($handover['handoverStat'] === 'pending');
+        ?>
         <div class="handover-content">
             <!-- Equipment Details Section -->
             <div class="details-section">
@@ -229,105 +403,140 @@ require_once __DIR__ . '/../component/header.php';
                                     </span>
                                 </div>
                             </div>
+                            <?php if (!empty($handover['handoverStaff'])): ?>
+                                <div class="detail-item">
+                                    <div class="detail-label">Handover Staff</div>
+                                    <div class="detail-value">
+                                        <?php 
+                                        if (!empty($handoverStaffName)) {
+                                            echo htmlspecialchars($handoverStaffName) . ' (' . htmlspecialchars($handover['handoverStaff']) . ')';
+                                        } else {
+                                            echo htmlspecialchars($handover['handoverStaff']);
+                                        }
+                                        ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($handover['returnStaff'])): ?>
+                                <div class="detail-item">
+                                    <div class="detail-label">Return Staff</div>
+                                    <div class="detail-value">
+                                        <?php 
+                                        if (!empty($returnStaffName)) {
+                                            echo htmlspecialchars($returnStaffName) . ' (' . htmlspecialchars($handover['returnStaff']) . ')';
+                                        } else {
+                                            echo htmlspecialchars($handover['returnStaff']);
+                                        }
+                                        ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- User Agreement Section -->
-            <div class="agreement-section">
-                <div class="agreement-card">
-                    <div class="card-header">
-                        <h2>User Agreement</h2>
-                    </div>
-                    <div class="card-body">
-                        <div class="agreement-content">
-                            <p class="agreement-intro">By proceeding with the handover, the lecturer agrees to the following terms and conditions:</p>
-                            
-                            <div class="agreement-terms">
-                                <div class="term-item">
-                                    <div class="term-icon">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                                        </svg>
+            <!-- User Agreement Section - Only show for pending handovers -->
+            <?php if ($is_pending): ?>
+                <div class="agreement-section">
+                    <div class="agreement-card">
+                        <div class="card-header">
+                            <h2>User Agreement</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="agreement-content">
+                                <p class="agreement-intro">By proceeding with the handover, the lecturer agrees to the following terms and conditions:</p>
+                                
+                                <div class="agreement-terms">
+                                    <div class="term-item">
+                                        <div class="term-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                            </svg>
+                                        </div>
+                                        <div class="term-text">
+                                            <strong>Responsible Care:</strong> The lecturer is responsible for taking proper care of the equipment and ensuring it is used in accordance with its intended purpose.
+                                        </div>
                                     </div>
-                                    <div class="term-text">
-                                        <strong>Responsible Care:</strong> The lecturer is responsible for taking proper care of the equipment and ensuring it is used in accordance with its intended purpose.
+
+                                    <div class="term-item">
+                                        <div class="term-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                            </svg>
+                                        </div>
+                                        <div class="term-text">
+                                            <strong>Security:</strong> The lecturer must ensure the equipment is kept secure and protected from theft, damage, or unauthorized use.
+                                        </div>
+                                    </div>
+
+                                    <div class="term-item">
+                                        <div class="term-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                            </svg>
+                                        </div>
+                                        <div class="term-text">
+                                            <strong>Maintenance:</strong> The lecturer must report any issues, damages, or malfunctions immediately to the IT department.
+                                        </div>
+                                    </div>
+
+                                    <div class="term-item">
+                                        <div class="term-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                            </svg>
+                                        </div>
+                                        <div class="term-text">
+                                            <strong>Return Policy:</strong> The equipment must be returned in the same condition as received, with all accessories and documentation included.
+                                        </div>
+                                    </div>
+
+                                    <div class="term-item">
+                                        <div class="term-icon">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                            </svg>
+                                        </div>
+                                        <div class="term-text">
+                                            <strong>Liability:</strong> The lecturer will be held financially responsible for any loss, damage, or theft of the equipment while in their possession.
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="term-item">
-                                    <div class="term-icon">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                                        </svg>
-                                    </div>
-                                    <div class="term-text">
-                                        <strong>Security:</strong> The lecturer must ensure the equipment is kept secure and protected from theft, damage, or unauthorized use.
-                                    </div>
+                                <div class="agreement-checkbox">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="agreeTerms" name="agreeTerms" required>
+                                        <span class="checkbox-custom"></span>
+                                        <span class="checkbox-text">I have read and agree to the terms and conditions stated above</span>
+                                    </label>
                                 </div>
-
-                                <div class="term-item">
-                                    <div class="term-icon">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                                        </svg>
-                                    </div>
-                                    <div class="term-text">
-                                        <strong>Maintenance:</strong> The lecturer must report any issues, damages, or malfunctions immediately to the IT department.
-                                    </div>
-                                </div>
-
-                                <div class="term-item">
-                                    <div class="term-icon">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                                        </svg>
-                                    </div>
-                                    <div class="term-text">
-                                        <strong>Return Policy:</strong> The equipment must be returned in the same condition as received, with all accessories and documentation included.
-                                    </div>
-                                </div>
-
-                                <div class="term-item">
-                                    <div class="term-icon">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                                        </svg>
-                                    </div>
-                                    <div class="term-text">
-                                        <strong>Liability:</strong> The lecturer will be held financially responsible for any loss, damage, or theft of the equipment while in their possession.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="agreement-checkbox">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="agreeTerms" name="agreeTerms" required>
-                                    <span class="checkbox-custom"></span>
-                                    <span class="checkbox-text">I have read and agree to the terms and conditions stated above</span>
-                                </label>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            <?php endif; ?>
 
-            <!-- Action Button Section -->
-            <div class="action-section">
-                <button type="button" class="btn-handover" id="handoverBtn" disabled>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                    <span>Confirm Handover</span>
-                </button>
-            </div>
+            <!-- Action Button Section - Only show for pending handovers -->
+            <?php if ($is_pending): ?>
+                <form method="POST" action="" id="handoverForm" class="action-section">
+                    <input type="hidden" name="action" value="handover">
+                    <input type="hidden" name="handover_id" value="<?php echo htmlspecialchars($handover['handoverID']); ?>">
+                    <input type="hidden" name="agreeTerms" id="agreeTermsHidden" value="">
+                    <button type="submit" class="btn-handover" id="handoverBtn" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <span>Confirm Handover</span>
+                    </button>
+                </form>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 </div>

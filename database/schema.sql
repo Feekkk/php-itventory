@@ -76,12 +76,16 @@ CREATE TABLE IF NOT EXISTS handover (
     pickup_date DATE NOT NULL COMMENT 'Pickup date',
     return_date DATE COMMENT 'Return date',
     handoverStat VARCHAR(50) DEFAULT 'pending' COMMENT 'Handover status (pending, picked_up, returned)',
+    handoverStaff VARCHAR(50) COMMENT 'Staff ID who performed the handover',
+    returnStaff VARCHAR(50) COMMENT 'Staff ID who received the return',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Handover creation timestamp',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update timestamp',
     INDEX idx_equipment_id (equipment_id),
     INDEX idx_lecturer_id (lecturer_id),
     INDEX idx_handoverStat (handoverStat),
     INDEX idx_pickup_date (pickup_date),
+    INDEX idx_handoverStaff (handoverStaff),
+    INDEX idx_returnStaff (returnStaff),
     FOREIGN KEY (equipment_id) REFERENCES inventory(equipment_id) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
