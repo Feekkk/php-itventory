@@ -578,6 +578,7 @@
     transition: all 0.2s ease;
     background: transparent;
     flex-shrink: 0;
+    text-decoration: none;
 }
 
 .view-btn {

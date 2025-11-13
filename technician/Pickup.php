@@ -290,50 +290,18 @@ require_once __DIR__ . '/../component/header.php';
                                     <span class="status-badge status-pending">Pending</span>
                                 </div>
                                 <div class="card-body">
-                                    <?php if (!empty($handover['lecturer_id'])): ?>
-                                        <div class="info-row">
-                                            <span class="info-label">Lecturer ID:</span>
-                                            <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_id']); ?></span>
-                                        </div>
-                                    <?php endif; ?>
                                     <div class="info-row">
                                         <span class="info-label">Lecturer:</span>
                                         <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_name']); ?></span>
                                     </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Email:</span>
-                                        <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_email']); ?></span>
-                                    </div>
-                                    <?php if (!empty($handover['lecturer_phone'])): ?>
-                                        <div class="info-row">
-                                            <span class="info-label">Phone:</span>
-                                            <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_phone']); ?></span>
-                                        </div>
-                                    <?php endif; ?>
-                                    <div class="info-row">
-                                        <span class="info-label">Pickup Date:</span>
-                                        <span class="info-value"><?php echo date('d M Y', strtotime($handover['pickup_date'])); ?></span>
-                                    </div>
-                                    <?php if (!empty($handover['return_date'])): ?>
-                                        <div class="info-row">
-                                            <span class="info-label">Return Date:</span>
-                                            <span class="info-value"><?php echo date('d M Y', strtotime($handover['return_date'])); ?></span>
-                                        </div>
-                                    <?php endif; ?>
                                 </div>
                                 <div class="card-actions">
-                                    <button class="action-btn view-btn" title="View Details">
+                                    <a href="PickupForm.php?id=<?php echo htmlspecialchars($handover['handoverID']); ?>" class="action-btn view-btn" title="View Details">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                             <circle cx="12" cy="12" r="3"></circle>
                                         </svg>
-                                    </button>
-                                    <button class="action-btn handover-btn" title="Hand Over">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                                        </svg>
-                                    </button>
+                                    </a>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -397,51 +365,18 @@ require_once __DIR__ . '/../component/header.php';
                                     </span>
                                 </div>
                                 <div class="card-body">
-                                    <?php if (!empty($handover['lecturer_id'])): ?>
-                                        <div class="info-row">
-                                            <span class="info-label">Lecturer ID:</span>
-                                            <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_id']); ?></span>
-                                        </div>
-                                    <?php endif; ?>
                                     <div class="info-row">
                                         <span class="info-label">Lecturer:</span>
                                         <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_name']); ?></span>
                                     </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Email:</span>
-                                        <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_email']); ?></span>
-                                    </div>
-                                    <?php if (!empty($handover['lecturer_phone'])): ?>
-                                        <div class="info-row">
-                                            <span class="info-label">Phone:</span>
-                                            <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_phone']); ?></span>
-                                        </div>
-                                    <?php endif; ?>
-                                    <div class="info-row">
-                                        <span class="info-label">Pickup Date:</span>
-                                        <span class="info-value"><?php echo date('d M Y', strtotime($handover['pickup_date'])); ?></span>
-                                    </div>
-                                    <?php if (!empty($handover['return_date'])): ?>
-                                        <div class="info-row">
-                                            <span class="info-label">Return Date:</span>
-                                            <span class="info-value"><?php echo date('d M Y', strtotime($handover['return_date'])); ?></span>
-                                        </div>
-                                    <?php endif; ?>
                                 </div>
                                 <div class="card-actions">
-                                    <button class="action-btn view-btn" title="View Details">
+                                    <a href="PickupForm.php?id=<?php echo htmlspecialchars($handover['handoverID']); ?>" class="action-btn view-btn" title="View Details">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                             <circle cx="12" cy="12" r="3"></circle>
                                         </svg>
-                                    </button>
-                                    <?php if ($handover['handoverStat'] === 'picked_up'): ?>
-                                        <button class="action-btn return-btn" title="Mark as Returned">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M9 18l6-6-6-6"></path>
-                                            </svg>
-                                        </button>
-                                    <?php endif; ?>
+                                    </a>
                                 </div>
                             </div>
                         <?php endforeach; ?>
