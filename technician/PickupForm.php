@@ -79,6 +79,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             $conn->commit();
                             $conn->autocommit(TRUE);
                             
+                            // Fetch updated handover data for email
+                            $handover_stmt = $conn->prepare("SELECT * FROM handover WHERE handoverID = ?");
+                            $handover_stmt->bind_param("i", $handover_id);
+                            $handover_stmt->execute();
+                            $handover_result = $handover_stmt->get_result();
+                            $updated_handover = $handover_result->fetch_assoc();
+                            $handover_stmt->close();
+                            
+                            // Fetch equipment details for email
+                            $equipment_data = null;
+                            if (!empty($updated_handover['equipment_id'])) {
+                                $columns_check = $conn->query("SHOW COLUMNS FROM inventory LIKE 'category_id'");
+                                $has_category_id = $columns_check && $columns_check->num_rows > 0;
+                                
+                                if ($has_category_id) {
+                                    $equipment_stmt = $conn->prepare("SELECT i.*, c.category_name as category FROM inventory i LEFT JOIN categories c ON i.category_id = c.id WHERE i.equipment_id = ?");
+                                } else {
+                                    $equipment_stmt = $conn->prepare("SELECT * FROM inventory WHERE equipment_id = ?");
+                                }
+                                
+                                $equipment_stmt->bind_param("s", $updated_handover['equipment_id']);
+                                $equipment_stmt->execute();
+                                $equipment_result = $equipment_stmt->get_result();
+                                
+                                if ($equipment_result->num_rows === 1) {
+                                    $equipment_data = $equipment_result->fetch_assoc();
+                                }
+                                
+                                $equipment_stmt->close();
+                            }
+                            
+                            // Send email notification to lecturer
+                            if ($updated_handover && $equipment_data) {
+                                $email_sent = sendHandoverConfirmationEmail($updated_handover, $equipment_data);
+                                if (!$email_sent) {
+                                    // Log error but don't fail the handover process
+                                    error_log("Failed to send email notification for handover ID: $handover_id");
+                                }
+                            }
+                            
                             setSessionMessage('success', 'Equipment handover completed successfully.');
                             header('Location: PickupForm.php?id=' . $handover_id);
                             exit();
