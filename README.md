@@ -130,7 +130,7 @@ Stores handover records:
    ```
 
 2. **Configure Database**
-   - Update `database/config.php` with your database credentials:
+   - Update `config/database.php` with your database credentials:
      ```php
      define('DB_HOST', 'localhost');
      define('DB_USER', 'your_username');
@@ -185,8 +185,11 @@ RCMP-ITventory/
 │   ├── PickupForm.css
 │   ├── profile.css
 │   └── ViewItem.css
-├── database/              # Database configuration and schema
-│   ├── config.php
+├── config/                # Application configuration files
+│   ├── database.php
+│   ├── email.php
+│   └── handover_email.php
+├── database/              # Database schema and setup scripts
 │   ├── schema.sql
 │   └── setup.php
 ├── js/                    # JavaScript files

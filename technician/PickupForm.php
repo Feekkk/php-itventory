@@ -1,5 +1,6 @@
 <?php
-require_once __DIR__ . '/../database/config.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/handover_email.php';
 require_once __DIR__ . '/../auth/session.php';
 
 // Check if user is logged in

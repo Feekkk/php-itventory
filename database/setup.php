@@ -90,19 +90,19 @@ function getDBConnection() {
 }
 ";
     
-    $configFile = __DIR__ . '/config.php';
+    $configFile = dirname(__DIR__) . '/config/database.php';
     if (file_put_contents($configFile, $configContent)) {
-        echo "<p style='color: green;'>✓ Database configuration file created at: database/config.php</p>";
+        echo "<p style='color: green;'>✓ Database configuration file created at: config/database.php</p>";
     } else {
-        echo "<p style='color: orange;'>⚠ Could not create config file. Please create database/config.php manually.</p>";
+        echo "<p style='color: orange;'>⚠ Could not create config file. Please create config/database.php manually.</p>";
     }
     
     echo "<hr>";
     echo "<h3 style='color: green;'>Setup completed successfully!</h3>";
     echo "<p><strong>Next steps:</strong></p>";
     echo "<ul>";
-    echo "<li>Update database credentials in database/config.php if needed</li>";
-    echo "<li>Include database/config.php in your PHP files that need database access</li>";
+    echo "<li>Update database credentials in config/database.php if needed</li>";
+    echo "<li>Include config/database.php in your PHP files that need database access</li>";
     echo "<li>Delete or secure this setup.php file after setup</li>";
     echo "</ul>";
     
