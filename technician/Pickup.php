@@ -263,6 +263,18 @@ require_once __DIR__ . '/../component/header.php';
                         echo $pending_count; 
                     ?></span>
                 </div>
+                <?php 
+                $pending_count = count(array_filter($handovers, function($h) { 
+                    return ($h['handoverStat'] ?? '') === 'pending'; 
+                })); 
+                if ($pending_count > 0): ?>
+                    <a href="ViewPending.php" class="view-all-btn" title="View All Pending">
+                        <span>View All</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </a>
+                <?php endif; ?>
             </div>
             <div class="box-content">
                 <?php 
@@ -326,6 +338,18 @@ require_once __DIR__ . '/../component/header.php';
                         echo $handover_count; 
                     ?></span>
                 </div>
+                <?php 
+                $handover_count = count(array_filter($handovers, function($h) { 
+                    return in_array($h['handoverStat'] ?? '', ['picked_up', 'returned']); 
+                })); 
+                if ($handover_count > 0): ?>
+                    <a href="ViewHandover.php" class="view-all-btn" title="View All Handovers">
+                        <span>View All</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </a>
+                <?php endif; ?>
             </div>
             <div class="box-content">
                 <?php 

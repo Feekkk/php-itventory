@@ -327,13 +327,17 @@
     border-top: 4px solid #93c5fd;
 }
 
-.box-header {
+.pickup-box .box-header {
     padding: 1.25rem 1.5rem;
     background: #ffffff;
     border-bottom: 2px solid #e5e7eb;
     position: sticky;
     top: 0;
     z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
 }
 
 .box-title {
@@ -457,6 +461,32 @@
     align-items: flex-start;
     margin-bottom: 0.75rem;
     padding-left: 0.5rem;
+}
+
+.view-all-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.view-all-btn:hover {
+    background: #f9fafb;
+    color: #1e1e1e;
+    border-color: #d1d5db;
+}
+
+.view-all-btn svg {
+    flex-shrink: 0;
 }
 
 .equipment-info {
@@ -610,10 +640,150 @@
     color: #ffffff;
 }
 
+/* Handovers List Styles (for ViewPending.php and ViewHandover.php) */
+.handovers-list {
+    margin-top: 2rem;
+}
+
+.results-summary {
+    margin-bottom: 1rem;
+    padding: 0 0.5rem;
+}
+
+.results-count {
+    color: #6b7280;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.table-container {
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    overflow-x: auto;
+}
+
+.handover-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1200px;
+}
+
+.handover-table thead {
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.handover-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.handover-table tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+    transition: background-color 0.2s ease;
+}
+
+.handover-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.handover-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.handover-table td {
+    padding: 1rem;
+    font-size: 0.95rem;
+    color: #1e1e1e;
+    vertical-align: middle;
+}
+
+.handover-id {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #1e1e1e;
+    font-size: 0.9rem;
+}
+
+.equipment-id {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #1e1e1e;
+    font-size: 0.9rem;
+}
+
+.equipment-name {
+    color: #374151;
+    font-weight: 500;
+}
+
+.empty-state {
+    padding: 4rem 2rem;
+    text-align: center;
+    color: #6b7280;
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.empty-state svg {
+    margin-bottom: 1rem;
+    color: #d1d5db;
+}
+
+.empty-state h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+    font-size: 0.95rem;
+    color: #6b7280;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6b7280;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
+}
+
+.back-link:hover {
+    color: #1e1e1e;
+}
+
+.back-link svg {
+    flex-shrink: 0;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .pickups-layout {
         gap: 1.5rem;
+    }
+    
+    .handover-table {
+        font-size: 0.9rem;
+    }
+    
+    .handover-table th,
+    .handover-table td {
+        padding: 0.75rem;
     }
 }
 
@@ -672,6 +842,31 @@
 
     .pickup-box {
         max-height: none;
+    }
+    
+    .box-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .view-all-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .handover-table {
+        min-width: 1200px;
+        font-size: 0.85rem;
+    }
+    
+    .handover-table th,
+    .handover-table td {
+        padding: 0.625rem;
     }
 }
 
