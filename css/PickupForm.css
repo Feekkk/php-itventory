@@ -1,0 +1,545 @@
+/* Pickup Form Page Styles */
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6b7280;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
+}
+
+.back-link:hover {
+    color: #1e1e1e;
+}
+
+.back-link svg {
+    flex-shrink: 0;
+}
+
+.page-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1e1e1e;
+    margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+/* Error Message */
+.error-message {
+    padding: 0.875rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    background: #fee2e2;
+    color: #dc2626;
+    border-left: 4px solid #dc2626;
+}
+
+/* Handover Content */
+.handover-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* Details Section */
+.details-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.details-card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+}
+
+.equipment-card {
+    border-top: 4px solid #1e40af;
+}
+
+.handover-card {
+    border-top: 4px solid #065f46;
+}
+
+.card-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.card-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1e1e1e;
+    margin: 0;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Details Grid */
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.detail-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-value {
+    font-size: 1rem;
+    color: #1e1e1e;
+    font-weight: 500;
+}
+
+.serial-number {
+    font-family: 'Courier New', monospace;
+    color: #6b7280;
+}
+
+.handover-id {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #1e40af;
+}
+
+/* Status Badge */
+.status-badge {
+    display: inline-block;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    background: #f4f6f8;
+    color: #1e1e1e;
+    border: 1px solid #e5e7eb;
+}
+
+.status-badge.status-available {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #6ee7b7;
+}
+
+.status-badge.status-hand-over,
+.status-badge.status-handover {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+.status-badge.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+.status-badge.status-picked-up {
+    background: #dbeafe;
+    color: #1e40af;
+    border-color: #93c5fd;
+}
+
+.status-badge.status-returned {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #6ee7b7;
+}
+
+.status-badge.status-maintenance {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+.status-badge.status-reserved {
+    background: #e9d5ff;
+    color: #6b21a8;
+    border-color: #c084fc;
+}
+
+/* Category Badge */
+.category-badge {
+    display: inline-block;
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: capitalize;
+    background: #f4f6f8;
+    color: #1e1e1e;
+    border: 1px solid #e5e7eb;
+}
+
+.category-badge.category-laptops,
+.category-badge.category-laptop {
+    background: #dbeafe;
+    color: #1e40af;
+    border-color: #93c5fd;
+}
+
+.category-badge.category-projectors,
+.category-badge.category-projector {
+    background: #e9d5ff;
+    color: #6b21a8;
+    border-color: #c084fc;
+}
+
+.category-badge.category-monitors,
+.category-badge.category-monitor {
+    background: #cffafe;
+    color: #0e7490;
+    border-color: #67e8f9;
+}
+
+.category-badge.category-printers,
+.category-badge.category-printer {
+    background: #fed7aa;
+    color: #9a3412;
+    border-color: #fdba74;
+}
+
+.category-badge.category-tablets,
+.category-badge.category-tablet {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #6ee7b7;
+}
+
+.category-badge.category-accessories,
+.category-badge.category-accessory {
+    background: #fce7f3;
+    color: #9f1239;
+    border-color: #f9a8d4;
+}
+
+.category-badge.category-cables-adapters,
+.category-badge.category-cables-adapter {
+    background: #ccfbf1;
+    color: #134e4a;
+    border-color: #5eead4;
+}
+
+.category-badge.category-networking,
+.category-badge.category-network {
+    background: #e0e7ff;
+    color: #3730a3;
+    border-color: #a5b4fc;
+}
+
+.category-badge.category-audiovisual,
+.category-badge.category-audio-visual,
+.category-badge.category-audio,
+.category-badge.category-visual {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
+}
+
+/* Description Section */
+.description-section {
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 1.5rem;
+}
+
+.description-text {
+    line-height: 1.6;
+    color: #374151;
+}
+
+/* Agreement Section */
+.agreement-section {
+    margin-top: 1rem;
+}
+
+.agreement-card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e5e7eb;
+    border-top: 4px solid #dc2626;
+    overflow: hidden;
+}
+
+.agreement-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.agreement-intro {
+    font-size: 1rem;
+    color: #374151;
+    line-height: 1.6;
+    margin: 0;
+    font-weight: 500;
+}
+
+.agreement-terms {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.term-item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.term-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    color: #065f46;
+    margin-top: 0.125rem;
+}
+
+.term-text {
+    flex: 1;
+    font-size: 0.95rem;
+    color: #374151;
+    line-height: 1.6;
+}
+
+.term-text strong {
+    color: #1e1e1e;
+    font-weight: 600;
+}
+
+/* Agreement Checkbox */
+.agreement-checkbox {
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    display: none;
+}
+
+.checkbox-custom {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #d1d5db;
+    border-radius: 4px;
+    background: #ffffff;
+    transition: all 0.2s ease;
+    margin-top: 0.125rem;
+    position: relative;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
+    background: #065f46;
+    border-color: #065f46;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 6px;
+    width: 5px;
+    height: 10px;
+    border: solid #ffffff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.checkbox-label input[type="checkbox"]:focus + .checkbox-custom {
+    outline: 2px solid #065f46;
+    outline-offset: 2px;
+}
+
+.checkbox-text {
+    flex: 1;
+    font-size: 0.95rem;
+    color: #374151;
+    line-height: 1.5;
+    font-weight: 500;
+}
+
+/* Action Section */
+.action-section {
+    display: flex;
+    justify-content: center;
+    padding: 2rem 0;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 1rem;
+}
+
+.btn-handover {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1rem 2.5rem;
+    background: #065f46;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: "Poppins", sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-handover:hover:not(:disabled) {
+    background: #047857;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+.btn-handover:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-handover:disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.btn-handover svg {
+    flex-shrink: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 968px) {
+    .container {
+        padding: 1rem;
+    }
+
+    .header-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .page-header h1 {
+        font-size: 1.75rem;
+    }
+
+    .details-section {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .details-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .agreement-terms {
+        gap: 1rem;
+    }
+
+    .action-section {
+        padding: 1.5rem 0;
+    }
+
+    .btn-handover {
+        width: 100%;
+        padding: 1rem 2rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .card-header {
+        padding: 1rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .card-header h2 {
+        font-size: 1.1rem;
+    }
+
+    .detail-label {
+        font-size: 0.8rem;
+    }
+
+    .detail-value {
+        font-size: 0.95rem;
+    }
+
+    .agreement-intro {
+        font-size: 0.95rem;
+    }
+
+    .term-text {
+        font-size: 0.9rem;
+    }
+
+    .checkbox-text {
+        font-size: 0.9rem;
+    }
+
+    .btn-handover {
+        font-size: 0.95rem;
+        padding: 0.875rem 1.5rem;
+    }
+}
+
