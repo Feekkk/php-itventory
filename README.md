@@ -420,7 +420,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 👨‍💻 Author
 
-Developed for Razak Faculty of Technology and Informatics (RCMP), University Kuala Lumpur.
+Developed for IT - department (UniKL Royal College of Medicine).
 
 ## 📞 Support
 
@@ -428,10 +428,9 @@ For support, please contact the development team or create an issue in the repos
 
 ## 🙏 Acknowledgments
 
-- University Kuala Lumpur (UniKL)
-- Razak Faculty of Technology and Informatics (RCMP)
+- UniKL Royal College of Medicine (RCMP)
 - All contributors and testers
 
 ---
 
-**Note**: This system is designed for educational purposes and internal use within the RCMP faculty. Ensure proper security measures are in place before deploying to production.
+**Note**: This system is designed for educational purposes and internal use within the IT department (UniKL RCMP). Ensure proper security measures are in place before deploying to production.
