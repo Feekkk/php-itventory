@@ -188,7 +188,6 @@ require_once __DIR__ . '/../component/header.php';
                 <table class="handover-table">
                     <thead>
                         <tr>
-                            <th>Handover ID</th>
                             <th>Equipment ID</th>
                             <th>Equipment Name</th>
                             <th>Lecturer ID</th>
@@ -234,9 +233,6 @@ require_once __DIR__ . '/../component/header.php';
                             }
                             ?>
                             <tr>
-                                <td>
-                                    <span class="handover-id"><?php echo htmlspecialchars($handover['handoverID']); ?></span>
-                                </td>
                                 <td>
                                     <span class="equipment-id"><?php echo htmlspecialchars($handover['equipment_id']); ?></span>
                                 </td>
