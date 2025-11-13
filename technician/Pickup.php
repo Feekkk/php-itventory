@@ -57,7 +57,7 @@ try {
             COUNT(*) as total,
             SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
             SUM(CASE WHEN status = 'Picked Up' THEN 1 ELSE 0 END) as picked_up,
-            SUM(CASE WHEN status = 'Returned' THEN 1 ELSE 0 END) as returned,
+            SUM(CASE WHEN status = 'Returned' THEN 1 ELSE 0 END) as returned
             FROM pickups";
         
         $stats_result = $conn->query($stats_sql);
@@ -117,6 +117,13 @@ require_once __DIR__ . '/../component/header.php';
                 <h1>Equipment Pickup Management</h1>
                 <p class="page-subtitle">View and manage all equipment pickup records</p>
             </div>
+            <a href="AddPickup.php" class="add-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Add Pickup</span>
+            </a>
         </div>
     </div>
 

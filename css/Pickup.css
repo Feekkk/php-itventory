@@ -29,6 +29,34 @@
     font-size: 1rem;
 }
 
+.add-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: #1e1e1e;
+    color: #ffffff;
+    border: 1.5px solid #1e1e1e;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    font-family: "Poppins", sans-serif;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.add-btn:hover {
+    background: #000000;
+    border-color: #000000;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.add-btn svg {
+    flex-shrink: 0;
+}
+
 /* Error/Success Messages */
 .error-message,
 .success-message {
@@ -591,6 +619,16 @@
 @media (max-width: 968px) {
     .container {
         padding: 1rem;
+    }
+
+    .header-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .add-btn {
+        width: 100%;
+        justify-content: center;
     }
 
     .stats-grid {
