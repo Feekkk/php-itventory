@@ -15,8 +15,8 @@ $user = getUserData();
 $status_filter = isset($_GET['status']) ? trim($_GET['status']) : '';
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-// Fetch pickups from database
-$pickups = [];
+// Fetch handovers from database
+$handovers = [];
 $stats = [
     'total' => 0,
     'pending' => 0,
@@ -26,7 +26,7 @@ $stats = [
 
 try {
     $conn = getDBConnection();
-    $table_check = $conn->query("SHOW TABLES LIKE 'pickups'");
+    $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
     
     if ($table_check && $table_check->num_rows > 0) {
         // Build WHERE clause
@@ -35,18 +35,26 @@ try {
         $types = '';
         
         if (!empty($search)) {
-            $where[] = "(equipment_id LIKE ? OR equipment_name LIKE ? OR lecturer_name LIKE ? OR lecturer_email LIKE ?)";
+            $where[] = "(equipment_id LIKE ? OR equipment_name LIKE ? OR lecturer_id LIKE ? OR lecturer_name LIKE ? OR lecturer_email LIKE ?)";
             $search_param = "%{$search}%";
             $params[] = $search_param;
             $params[] = $search_param;
             $params[] = $search_param;
             $params[] = $search_param;
-            $types .= 'ssss';
+            $params[] = $search_param;
+            $types .= 'sssss';
         }
         
         if (!empty($status_filter)) {
-            $where[] = "status = ?";
-            $params[] = $status_filter;
+            // Map filter values to database values
+            $status_map = [
+                'Pending' => 'pending',
+                'Picked Up' => 'picked_up',
+                'Returned' => 'returned'
+            ];
+            $db_status = $status_map[$status_filter] ?? $status_filter;
+            $where[] = "handoverStat = ?";
+            $params[] = $db_status;
             $types .= 's';
         }
         
@@ -55,10 +63,10 @@ try {
         // Get statistics
         $stats_sql = "SELECT 
             COUNT(*) as total,
-            SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
-            SUM(CASE WHEN status = 'Picked Up' THEN 1 ELSE 0 END) as picked_up,
-            SUM(CASE WHEN status = 'Returned' THEN 1 ELSE 0 END) as returned
-            FROM pickups";
+            SUM(CASE WHEN handoverStat = 'pending' THEN 1 ELSE 0 END) as pending,
+            SUM(CASE WHEN handoverStat = 'picked_up' THEN 1 ELSE 0 END) as picked_up,
+            SUM(CASE WHEN handoverStat = 'returned' THEN 1 ELSE 0 END) as returned
+            FROM handover";
         
         $stats_result = $conn->query($stats_sql);
         if ($stats_result) {
@@ -69,8 +77,8 @@ try {
             $stats['returned'] = $stats_row['returned'] ?? 0;
         }
         
-        // Get pickups
-        $sql = "SELECT * FROM pickups $where_clause ORDER BY created_at DESC";
+        // Get handovers
+        $sql = "SELECT * FROM handover $where_clause ORDER BY created_at DESC";
         $stmt = $conn->prepare($sql);
         
         if (!empty($params)) {
@@ -79,7 +87,7 @@ try {
         
         $stmt->execute();
         $result = $stmt->get_result();
-        $pickups = $result->fetch_all(MYSQLI_ASSOC);
+        $handovers = $result->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
     }
     
@@ -149,7 +157,7 @@ require_once __DIR__ . '/../component/header.php';
             </div>
             <div class="stat-content">
                 <div class="stat-value"><?php echo $stats['total']; ?></div>
-                <div class="stat-label">Total Pickups</div>
+                <div class="stat-label">Total Handovers</div>
             </div>
         </div>
 
@@ -203,7 +211,7 @@ require_once __DIR__ . '/../component/header.php';
                 <input 
                     type="text" 
                     name="search" 
-                    placeholder="Search by equipment ID, name, lecturer name, or email..." 
+                    placeholder="Search by equipment ID, name, lecturer ID, lecturer name, or email..." 
                     value="<?php echo htmlspecialchars($search); ?>"
                     class="search-input"
                 >
@@ -249,8 +257,8 @@ require_once __DIR__ . '/../component/header.php';
                     </svg>
                     <h2>Pending</h2>
                     <span class="box-count"><?php 
-                        $pending_count = count(array_filter($pickups, function($p) { 
-                            return ($p['status'] ?? '') === 'Pending'; 
+                        $pending_count = count(array_filter($handovers, function($h) { 
+                            return ($h['handoverStat'] ?? '') === 'pending'; 
                         })); 
                         echo $pending_count; 
                     ?></span>
@@ -258,52 +266,58 @@ require_once __DIR__ . '/../component/header.php';
             </div>
             <div class="box-content">
                 <?php 
-                $pending_pickups = array_filter($pickups, function($p) { 
-                    return ($p['status'] ?? '') === 'Pending'; 
+                $pending_handovers = array_filter($handovers, function($h) { 
+                    return ($h['handoverStat'] ?? '') === 'pending'; 
                 }); 
                 ?>
-                <?php if (empty($pending_pickups)): ?>
+                <?php if (empty($pending_handovers)): ?>
                     <div class="empty-box-state">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <circle cx="12" cy="12" r="10"></circle>
                             <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
-                        <p>No pending pickups</p>
+                        <p>No pending handovers</p>
                     </div>
                 <?php else: ?>
                     <div class="pickup-cards">
-                        <?php foreach ($pending_pickups as $pickup): ?>
+                        <?php foreach ($pending_handovers as $handover): ?>
                             <div class="pickup-card">
                                 <div class="card-header">
                                     <div class="equipment-info">
-                                        <strong class="equipment-id"><?php echo htmlspecialchars($pickup['equipment_id']); ?></strong>
-                                        <span class="equipment-name"><?php echo htmlspecialchars($pickup['equipment_name']); ?></span>
+                                        <strong class="equipment-id"><?php echo htmlspecialchars($handover['equipment_id']); ?></strong>
+                                        <span class="equipment-name"><?php echo htmlspecialchars($handover['equipment_name']); ?></span>
                                     </div>
                                     <span class="status-badge status-pending">Pending</span>
                                 </div>
                                 <div class="card-body">
+                                    <?php if (!empty($handover['lecturer_id'])): ?>
+                                        <div class="info-row">
+                                            <span class="info-label">Lecturer ID:</span>
+                                            <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_id']); ?></span>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="info-row">
                                         <span class="info-label">Lecturer:</span>
-                                        <span class="info-value"><?php echo htmlspecialchars($pickup['lecturer_name']); ?></span>
+                                        <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_name']); ?></span>
                                     </div>
                                     <div class="info-row">
                                         <span class="info-label">Email:</span>
-                                        <span class="info-value"><?php echo htmlspecialchars($pickup['lecturer_email']); ?></span>
+                                        <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_email']); ?></span>
                                     </div>
-                                    <?php if (!empty($pickup['lecturer_phone'])): ?>
+                                    <?php if (!empty($handover['lecturer_phone'])): ?>
                                         <div class="info-row">
                                             <span class="info-label">Phone:</span>
-                                            <span class="info-value"><?php echo htmlspecialchars($pickup['lecturer_phone']); ?></span>
+                                            <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_phone']); ?></span>
                                         </div>
                                     <?php endif; ?>
                                     <div class="info-row">
                                         <span class="info-label">Pickup Date:</span>
-                                        <span class="info-value"><?php echo date('d M Y', strtotime($pickup['pickup_date'])); ?></span>
+                                        <span class="info-value"><?php echo date('d M Y', strtotime($handover['pickup_date'])); ?></span>
                                     </div>
-                                    <?php if ($pickup['expected_return_date']): ?>
+                                    <?php if (!empty($handover['return_date'])): ?>
                                         <div class="info-row">
                                             <span class="info-label">Return Date:</span>
-                                            <span class="info-value"><?php echo date('d M Y', strtotime($pickup['expected_return_date'])); ?></span>
+                                            <span class="info-value"><?php echo date('d M Y', strtotime($handover['return_date'])); ?></span>
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -338,8 +352,8 @@ require_once __DIR__ . '/../component/header.php';
                     </svg>
                     <h2>Hand Over</h2>
                     <span class="box-count"><?php 
-                        $handover_count = count(array_filter($pickups, function($p) { 
-                            return in_array($p['status'] ?? '', ['Picked Up', 'Returned']); 
+                        $handover_count = count(array_filter($handovers, function($h) { 
+                            return in_array($h['handoverStat'] ?? '', ['picked_up', 'returned']); 
                         })); 
                         echo $handover_count; 
                     ?></span>
@@ -347,11 +361,11 @@ require_once __DIR__ . '/../component/header.php';
             </div>
             <div class="box-content">
                 <?php 
-                $handover_pickups = array_filter($pickups, function($p) { 
-                    return in_array($p['status'] ?? '', ['Picked Up', 'Returned']); 
+                $handover_records = array_filter($handovers, function($h) { 
+                    return in_array($h['handoverStat'] ?? '', ['picked_up', 'returned']); 
                 }); 
                 ?>
-                <?php if (empty($handover_pickups)): ?>
+                <?php if (empty($handover_records)): ?>
                     <div class="empty-box-state">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -361,49 +375,56 @@ require_once __DIR__ . '/../component/header.php';
                     </div>
                 <?php else: ?>
                     <div class="pickup-cards">
-                        <?php foreach ($handover_pickups as $pickup): ?>
+                        <?php foreach ($handover_records as $handover): ?>
                             <?php
-                            $status_class = strtolower(str_replace(' ', '-', $pickup['status'] ?? 'pending'));
+                            // Map database status to display status
+                            $status_map = [
+                                'pending' => 'Pending',
+                                'picked_up' => 'Picked Up',
+                                'returned' => 'Returned'
+                            ];
+                            $display_status = $status_map[$handover['handoverStat']] ?? ucfirst($handover['handoverStat']);
+                            $status_class = strtolower(str_replace(' ', '-', $display_status));
                             ?>
                             <div class="pickup-card">
                                 <div class="card-header">
                                     <div class="equipment-info">
-                                        <strong class="equipment-id"><?php echo htmlspecialchars($pickup['equipment_id']); ?></strong>
-                                        <span class="equipment-name"><?php echo htmlspecialchars($pickup['equipment_name']); ?></span>
+                                        <strong class="equipment-id"><?php echo htmlspecialchars($handover['equipment_id']); ?></strong>
+                                        <span class="equipment-name"><?php echo htmlspecialchars($handover['equipment_name']); ?></span>
                                     </div>
                                     <span class="status-badge status-<?php echo $status_class; ?>">
-                                        <?php echo htmlspecialchars($pickup['status'] ?? 'Pending'); ?>
+                                        <?php echo htmlspecialchars($display_status); ?>
                                     </span>
                                 </div>
                                 <div class="card-body">
+                                    <?php if (!empty($handover['lecturer_id'])): ?>
+                                        <div class="info-row">
+                                            <span class="info-label">Lecturer ID:</span>
+                                            <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_id']); ?></span>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="info-row">
                                         <span class="info-label">Lecturer:</span>
-                                        <span class="info-value"><?php echo htmlspecialchars($pickup['lecturer_name']); ?></span>
+                                        <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_name']); ?></span>
                                     </div>
                                     <div class="info-row">
                                         <span class="info-label">Email:</span>
-                                        <span class="info-value"><?php echo htmlspecialchars($pickup['lecturer_email']); ?></span>
+                                        <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_email']); ?></span>
                                     </div>
-                                    <?php if (!empty($pickup['lecturer_phone'])): ?>
+                                    <?php if (!empty($handover['lecturer_phone'])): ?>
                                         <div class="info-row">
                                             <span class="info-label">Phone:</span>
-                                            <span class="info-value"><?php echo htmlspecialchars($pickup['lecturer_phone']); ?></span>
+                                            <span class="info-value"><?php echo htmlspecialchars($handover['lecturer_phone']); ?></span>
                                         </div>
                                     <?php endif; ?>
                                     <div class="info-row">
                                         <span class="info-label">Pickup Date:</span>
-                                        <span class="info-value"><?php echo date('d M Y', strtotime($pickup['pickup_date'])); ?></span>
+                                        <span class="info-value"><?php echo date('d M Y', strtotime($handover['pickup_date'])); ?></span>
                                     </div>
-                                    <?php if ($pickup['expected_return_date']): ?>
+                                    <?php if (!empty($handover['return_date'])): ?>
                                         <div class="info-row">
                                             <span class="info-label">Return Date:</span>
-                                            <span class="info-value"><?php echo date('d M Y', strtotime($pickup['expected_return_date'])); ?></span>
-                                        </div>
-                                    <?php endif; ?>
-                                    <?php if ($pickup['actual_return_date']): ?>
-                                        <div class="info-row">
-                                            <span class="info-label">Returned:</span>
-                                            <span class="info-value"><?php echo date('d M Y', strtotime($pickup['actual_return_date'])); ?></span>
+                                            <span class="info-value"><?php echo date('d M Y', strtotime($handover['return_date'])); ?></span>
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -414,7 +435,7 @@ require_once __DIR__ . '/../component/header.php';
                                             <circle cx="12" cy="12" r="3"></circle>
                                         </svg>
                                     </button>
-                                    <?php if ($pickup['status'] === 'Picked Up'): ?>
+                                    <?php if ($handover['handoverStat'] === 'picked_up'): ?>
                                         <button class="action-btn return-btn" title="Mark as Returned">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M9 18l6-6-6-6"></path>

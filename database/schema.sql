@@ -64,8 +64,30 @@ INSERT IGNORE INTO categories (category_name, description) VALUES
 ('Networking', 'Network equipment and devices'),
 ('Audio/Visual', 'Audio and visual equipment');
 
+-- Create handover table
+CREATE TABLE IF NOT EXISTS handover (
+    handoverID INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY COMMENT 'Unique handover identifier',
+    equipment_id VARCHAR(50) NOT NULL COMMENT 'Foreign key to inventory table',
+    equipment_name VARCHAR(255) NOT NULL COMMENT 'Equipment name',
+    lecturer_id VARCHAR(50) NOT NULL COMMENT 'Lecturer identification number',
+    lecturer_name VARCHAR(255) NOT NULL COMMENT 'Lecturer full name',
+    lecturer_email VARCHAR(255) NOT NULL COMMENT 'Lecturer email address',
+    lecturer_phone VARCHAR(50) COMMENT 'Lecturer phone number',
+    pickup_date DATE NOT NULL COMMENT 'Pickup date',
+    return_date DATE COMMENT 'Return date',
+    handoverStat VARCHAR(50) DEFAULT 'pending' COMMENT 'Handover status (pending, picked_up, returned)',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Handover creation timestamp',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update timestamp',
+    INDEX idx_equipment_id (equipment_id),
+    INDEX idx_lecturer_id (lecturer_id),
+    INDEX idx_handoverStat (handoverStat),
+    INDEX idx_pickup_date (pickup_date),
+    FOREIGN KEY (equipment_id) REFERENCES inventory(equipment_id) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Show table structures
 DESCRIBE technician;
 DESCRIBE categories;
 DESCRIBE inventory;
+DESCRIBE handover;
 

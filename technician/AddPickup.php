@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lecturer_email = trim($_POST['lecturer_email'] ?? '');
     $lecturer_phone = trim($_POST['lecturer_phone'] ?? '');
     $pickup_date = trim($_POST['pickup_date'] ?? date('Y-m-d')); // Default to today if not provided
-    $expected_return_date = trim($_POST['expected_return_date'] ?? '');
+    $return_date = trim($_POST['return_date'] ?? '');
     
     // Validation
     if (empty($equipment_id)) {
@@ -123,8 +123,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $conn = getDBConnection();
             
-            // Get equipment name
-            $equipment_stmt = $conn->prepare("SELECT equipment_name FROM inventory WHERE equipment_id = ?");
+            // Get equipment name and status
+            $equipment_stmt = $conn->prepare("SELECT equipment_name, status FROM inventory WHERE equipment_id = ?");
             $equipment_stmt->bind_param("s", $equipment_id);
             $equipment_stmt->execute();
             $equipment_result = $equipment_stmt->get_result();
@@ -136,74 +136,107 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $equipment_row = $equipment_result->fetch_assoc();
                 $equipment_name = $equipment_row['equipment_name'];
+                $equipment_status = $equipment_row['status'];
                 $equipment_stmt->close();
                 
-                // Check if pickups table exists, create if not
-                $table_check = $conn->query("SHOW TABLES LIKE 'pickups'");
-                if (!$table_check || $table_check->num_rows === 0) {
-                    $create_table_sql = "CREATE TABLE IF NOT EXISTS pickups (
-                        id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                        equipment_id VARCHAR(50) NOT NULL,
-                        equipment_name VARCHAR(255) NOT NULL,
-                        lecturer_id VARCHAR(50) NOT NULL,
-                        lecturer_name VARCHAR(255) NOT NULL,
-                        lecturer_email VARCHAR(255) NOT NULL,
-                        lecturer_phone VARCHAR(50),
-                        pickup_date DATE NOT NULL,
-                        expected_return_date DATE,
-                        actual_return_date DATE,
-                        status VARCHAR(50) DEFAULT 'Pending',
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                        INDEX idx_equipment_id (equipment_id),
-                        INDEX idx_lecturer_id (lecturer_id),
-                        INDEX idx_status (status),
-                        INDEX idx_pickup_date (pickup_date)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-                    
-                    if (!$conn->query($create_table_sql)) {
-                        throw new Exception("Error creating pickups table: " . $conn->error);
-                    }
+                // Check if equipment is available
+                if ($equipment_status !== 'Available') {
+                    $error = 'Equipment is not available for handover. Current status: ' . htmlspecialchars($equipment_status);
+                    $conn->close();
                 } else {
-                    // Table exists, check if lecturer_id column exists, add it if not
-                    $column_check = $conn->query("SHOW COLUMNS FROM pickups LIKE 'lecturer_id'");
-                    if (!$column_check || $column_check->num_rows === 0) {
-                        $alter_table_sql = "ALTER TABLE pickups ADD COLUMN lecturer_id VARCHAR(50) NOT NULL DEFAULT '' AFTER equipment_name";
-                        if ($conn->query($alter_table_sql)) {
-                            // Add index if column was successfully added
-                            $index_check = $conn->query("SHOW INDEX FROM pickups WHERE Key_name = 'idx_lecturer_id'");
-                            if (!$index_check || $index_check->num_rows === 0) {
-                                $index_sql = "ALTER TABLE pickups ADD INDEX idx_lecturer_id (lecturer_id)";
-                                $conn->query($index_sql);
+                    // Check if handover table exists, create if not
+                    $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
+                    if (!$table_check || $table_check->num_rows === 0) {
+                        $create_table_sql = "CREATE TABLE IF NOT EXISTS handover (
+                            handoverID INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                            equipment_id VARCHAR(50) NOT NULL,
+                            equipment_name VARCHAR(255) NOT NULL,
+                            lecturer_id VARCHAR(50) NOT NULL,
+                            lecturer_name VARCHAR(255) NOT NULL,
+                            lecturer_email VARCHAR(255) NOT NULL,
+                            lecturer_phone VARCHAR(50),
+                            pickup_date DATE NOT NULL,
+                            return_date DATE,
+                            handoverStat VARCHAR(50) DEFAULT 'pending',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                            INDEX idx_equipment_id (equipment_id),
+                            INDEX idx_lecturer_id (lecturer_id),
+                            INDEX idx_handoverStat (handoverStat),
+                            INDEX idx_pickup_date (pickup_date),
+                            FOREIGN KEY (equipment_id) REFERENCES inventory(equipment_id) ON DELETE RESTRICT ON UPDATE CASCADE
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+                        
+                        if (!$conn->query($create_table_sql)) {
+                            throw new Exception("Error creating handover table: " . $conn->error);
+                        }
+                    } else {
+                        // Table exists, check if lecturer_id column exists, add it if not
+                        $column_check = $conn->query("SHOW COLUMNS FROM handover LIKE 'lecturer_id'");
+                        if (!$column_check || $column_check->num_rows === 0) {
+                            $alter_table_sql = "ALTER TABLE handover ADD COLUMN lecturer_id VARCHAR(50) NOT NULL DEFAULT '' AFTER equipment_name";
+                            if ($conn->query($alter_table_sql)) {
+                                // Add index if column was successfully added
+                                $index_check = $conn->query("SHOW INDEX FROM handover WHERE Key_name = 'idx_lecturer_id'");
+                                if (!$index_check || $index_check->num_rows === 0) {
+                                    $index_sql = "ALTER TABLE handover ADD INDEX idx_lecturer_id (lecturer_id)";
+                                    $conn->query($index_sql);
+                                }
                             }
                         }
                     }
-                }
-                
-                // Insert new pickup
-                // Handle optional fields: use empty string for phone, NULL for date
-                $lecturer_phone_param = empty($lecturer_phone) ? '' : $lecturer_phone;
-                if (empty($expected_return_date)) {
-                    $insert_stmt = $conn->prepare("INSERT INTO pickups (equipment_id, equipment_name, lecturer_id, lecturer_name, lecturer_email, lecturer_phone, pickup_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')");
-                    $insert_stmt->bind_param("sssssss", $equipment_id, $equipment_name, $lecturer_id, $lecturer_name, $lecturer_email, $lecturer_phone_param, $pickup_date);
-                } else {
-                    $insert_stmt = $conn->prepare("INSERT INTO pickups (equipment_id, equipment_name, lecturer_id, lecturer_name, lecturer_email, lecturer_phone, pickup_date, expected_return_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending')");
-                    $insert_stmt->bind_param("ssssssss", $equipment_id, $equipment_name, $lecturer_id, $lecturer_name, $lecturer_email, $lecturer_phone_param, $pickup_date, $expected_return_date);
-                }
-                
-                if ($insert_stmt->execute()) {
-                    $insert_stmt->close();
-                    $conn->close();
-                    setSessionMessage('success', 'Pickup request added successfully!');
-                    header('Location: Pickup.php');
-                    exit();
-                } else {
-                    $error = 'Failed to add pickup request: ' . $insert_stmt->error;
-                    $insert_stmt->close();
+                    
+                    // Start transaction to ensure both operations succeed or fail together
+                    $conn->autocommit(FALSE);
+                    
+                    try {
+                        // Insert new handover record
+                        $lecturer_phone_param = empty($lecturer_phone) ? '' : $lecturer_phone;
+                        if (empty($return_date)) {
+                            $insert_stmt = $conn->prepare("INSERT INTO handover (equipment_id, equipment_name, lecturer_id, lecturer_name, lecturer_email, lecturer_phone, pickup_date, handoverStat) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')");
+                            $insert_stmt->bind_param("sssssss", $equipment_id, $equipment_name, $lecturer_id, $lecturer_name, $lecturer_email, $lecturer_phone_param, $pickup_date);
+                        } else {
+                            $insert_stmt = $conn->prepare("INSERT INTO handover (equipment_id, equipment_name, lecturer_id, lecturer_name, lecturer_email, lecturer_phone, pickup_date, return_date, handoverStat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+                            $insert_stmt->bind_param("ssssssss", $equipment_id, $equipment_name, $lecturer_id, $lecturer_name, $lecturer_email, $lecturer_phone_param, $pickup_date, $return_date);
+                        }
+                        
+                        if (!$insert_stmt->execute()) {
+                            throw new Exception("Failed to insert handover record: " . $insert_stmt->error);
+                        }
+                        $insert_stmt->close();
+                        
+                        // Update inventory status to "hand over"
+                        $update_stmt = $conn->prepare("UPDATE inventory SET status = 'hand over' WHERE equipment_id = ?");
+                        $update_stmt->bind_param("s", $equipment_id);
+                        
+                        if (!$update_stmt->execute()) {
+                            throw new Exception("Failed to update inventory status: " . $update_stmt->error);
+                        }
+                        $update_stmt->close();
+                        
+                        // Commit transaction
+                        $conn->commit();
+                        $conn->autocommit(TRUE);
+                        
+                        setSessionMessage('success', 'Handover request added successfully! Equipment status updated to "hand over".');
+                        $conn->close();
+                        header('Location: Pickup.php');
+                        exit();
+                    } catch (Exception $e) {
+                        // Rollback transaction on error
+                        $conn->rollback();
+                        $conn->autocommit(TRUE);
+                        $error = 'Failed to add handover request: ' . $e->getMessage();
+                        if (isset($insert_stmt)) {
+                            $insert_stmt->close();
+                        }
+                        if (isset($update_stmt)) {
+                            $update_stmt->close();
+                        }
+                        $conn->close();
+                    }
                 }
             }
-            
-            $conn->close();
         } catch (Exception $e) {
             $error = 'Database error: ' . $e->getMessage();
             if (isset($conn)) {
