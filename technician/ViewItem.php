@@ -87,19 +87,38 @@ if (empty($equipment_id)) {
     try {
         $conn = getDBConnection();
         
+        // Check if equipment table exists (new structure)
+        $equipment_table_check = $conn->query("SHOW TABLES LIKE 'equipment'");
+        $has_equipment_table = $equipment_table_check && $equipment_table_check->num_rows > 0;
+        
         // Check if inventory table exists
         $table_check = $conn->query("SHOW TABLES LIKE 'inventory'");
         if ($table_check && $table_check->num_rows > 0) {
-            // Check if inventory table has category_id column
-            $columns_check = $conn->query("SHOW COLUMNS FROM inventory LIKE 'category_id'");
-            $has_category_id = $columns_check && $columns_check->num_rows > 0;
-            
-            if ($has_category_id) {
-                // New structure: join with categories
-                $stmt = $conn->prepare("SELECT i.*, c.category_name as category FROM inventory i LEFT JOIN categories c ON i.category_id = c.id WHERE i.equipment_id = ?");
+            if ($has_equipment_table) {
+                // New structure: Join equipment with inventory and categories
+                $stmt = $conn->prepare("SELECT 
+                    e.*, 
+                    i.status, 
+                    i.location, 
+                    i.created_at as inventory_created_at,
+                    i.updated_at as inventory_updated_at,
+                    c.category_name as category 
+                    FROM equipment e 
+                    INNER JOIN inventory i ON e.equipment_id = i.equipment_id 
+                    LEFT JOIN categories c ON e.category_id = c.id 
+                    WHERE e.equipment_id = ?");
             } else {
-                // Old structure: use category column
-                $stmt = $conn->prepare("SELECT * FROM inventory WHERE equipment_id = ?");
+                // Old structure: Check if inventory table has category_id column
+                $columns_check = $conn->query("SHOW COLUMNS FROM inventory LIKE 'category_id'");
+                $has_category_id = $columns_check && $columns_check->num_rows > 0;
+                
+                if ($has_category_id) {
+                    // New structure without equipment table: join with categories
+                    $stmt = $conn->prepare("SELECT i.*, c.category_name as category FROM inventory i LEFT JOIN categories c ON i.category_id = c.id WHERE i.equipment_id = ?");
+                } else {
+                    // Old structure: use category column
+                    $stmt = $conn->prepare("SELECT * FROM inventory WHERE equipment_id = ?");
+                }
             }
             
             $stmt->bind_param("s", $equipment_id);
@@ -207,6 +226,20 @@ require_once __DIR__ . '/../component/header.php';
                             <div class="detail-value serial-number"><?php echo htmlspecialchars($item['serial_number'] ?? 'N/A'); ?></div>
                         </div>
 
+                        <?php if (!empty($item['processor'])): ?>
+                        <div class="detail-item">
+                            <div class="detail-label">Processor</div>
+                            <div class="detail-value"><?php echo htmlspecialchars($item['processor']); ?></div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($item['operating_system'])): ?>
+                        <div class="detail-item">
+                            <div class="detail-label">Operating System</div>
+                            <div class="detail-value"><?php echo htmlspecialchars($item['operating_system']); ?></div>
+                        </div>
+                        <?php endif; ?>
+
                         <div class="detail-item">
                             <div class="detail-label">Location</div>
                             <div class="detail-value"><?php echo htmlspecialchars($item['location'] ?? 'N/A'); ?></div>
@@ -238,12 +271,6 @@ require_once __DIR__ . '/../component/header.php';
                         </div>
                     </div>
 
-                    <?php if (!empty($item['description'])): ?>
-                        <div class="description-section">
-                            <div class="detail-label">Description</div>
-                            <div class="detail-value description-text"><?php echo nl2br(htmlspecialchars($item['description'])); ?></div>
-                        </div>
-                    <?php endif; ?>
                 </div>
             </div>
 
@@ -257,15 +284,48 @@ require_once __DIR__ . '/../component/header.php';
                         <div class="info-item">
                             <div class="info-label">Created</div>
                             <div class="info-value">
-                                <?php echo $item['created_at'] ? date('d M Y, h:i A', strtotime($item['created_at'])) : 'N/A'; ?>
+                                <?php 
+                                $created_at = $item['created_at'] ?? $item['inventory_created_at'] ?? null;
+                                echo $created_at ? date('d M Y, h:i A', strtotime($created_at)) : 'N/A'; 
+                                ?>
                             </div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Last Updated</div>
                             <div class="info-value">
-                                <?php echo $item['updated_at'] ? date('d M Y, h:i A', strtotime($item['updated_at'])) : 'N/A'; ?>
+                                <?php 
+                                $updated_at = $item['updated_at'] ?? $item['inventory_updated_at'] ?? null;
+                                echo $updated_at ? date('d M Y, h:i A', strtotime($updated_at)) : 'N/A'; 
+                                ?>
                             </div>
                         </div>
+                        <?php if (!empty($item['staff_name'])): ?>
+                        <div class="info-item">
+                            <div class="info-label">Assigned To</div>
+                            <div class="info-value">
+                                <?php echo htmlspecialchars($item['staff_name']); ?>
+                                <?php if (!empty($item['staff_id'])): ?>
+                                    <small>(<?php echo htmlspecialchars($item['staff_id']); ?>)</small>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($item['handover_status'])): ?>
+                        <div class="info-item">
+                            <div class="info-label">Handover Status</div>
+                            <div class="info-value">
+                                <?php 
+                                $handover_status = $item['handover_status'];
+                                $status_map = [
+                                    'pending' => 'Pending',
+                                    'picked_up' => 'Picked Up',
+                                    'returned' => 'Returned'
+                                ];
+                                echo htmlspecialchars($status_map[$handover_status] ?? ucfirst($handover_status)); 
+                                ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
