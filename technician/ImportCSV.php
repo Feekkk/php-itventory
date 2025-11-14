@@ -170,18 +170,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                             $equipment_data['equipment_name'] = generateEquipmentName($row_data);
                         }
                         
-                        // Ensure category_id exists (if not, try to create category or use default)
+                        // Ensure category_id exists (if not, use "Other" category)
                         if (empty($equipment_data['category_id'])) {
-                            // Try to get first available category
-                            $cat_stmt = $conn->prepare("SELECT id FROM categories LIMIT 1");
+                            // Try to get "Other" category ID
+                            $cat_stmt = $conn->prepare("SELECT id FROM categories WHERE category_name = 'Other' LIMIT 1");
                             $cat_stmt->execute();
                             $cat_result = $cat_stmt->get_result();
                             if ($cat_result->num_rows > 0) {
                                 $equipment_data['category_id'] = $cat_result->fetch_assoc()['id'];
                             } else {
-                                $import_results['failed']++;
-                                $import_results['errors'][] = "Row $row_number: No category found and no categories exist in database.";
-                                continue;
+                                // If "Other" category doesn't exist, create it
+                                $create_other_stmt = $conn->prepare("INSERT INTO categories (category_name, description) VALUES ('Other', 'Other equipment and miscellaneous items')");
+                                if ($create_other_stmt->execute()) {
+                                    $equipment_data['category_id'] = $conn->insert_id;
+                                } else {
+                                    // Fallback: get first available category
+                                    $fallback_stmt = $conn->prepare("SELECT id FROM categories LIMIT 1");
+                                    $fallback_stmt->execute();
+                                    $fallback_result = $fallback_stmt->get_result();
+                                    if ($fallback_result->num_rows > 0) {
+                                        $equipment_data['category_id'] = $fallback_result->fetch_assoc()['id'];
+                                    } else {
+                                        $import_results['failed']++;
+                                        $import_results['errors'][] = "Row $row_number: No category found and unable to create 'Other' category.";
+                                        continue;
+                                    }
+                                    $fallback_stmt->close();
+                                }
+                                $create_other_stmt->close();
                             }
                             $cat_stmt->close();
                         }

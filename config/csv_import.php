@@ -265,7 +265,7 @@ define('CSV_ESCAPE', '\\'); // CSV escape character
  */
 function mapCategoryToId($categoryName, $conn = null) {
     if (empty($categoryName)) {
-        return null;
+        return null; // Will be set to "Other" by import logic
     }
     
     if ($conn === null) {
@@ -301,7 +301,7 @@ function mapCategoryToId($categoryName, $conn = null) {
     
     $stmt->close();
     
-    // If category doesn't exist, return null (will need to be handled by import logic)
+    // If category doesn't exist, return null (will be set to "Other" by import logic)
     return null;
 }
 
