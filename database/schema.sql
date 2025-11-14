@@ -105,7 +105,8 @@ INSERT IGNORE INTO categories (category_name, description) VALUES
 ('Accessories', 'Computer accessories and peripherals'),
 ('Cables & Adapters', 'Cables, adapters, and connectors'),
 ('Networking', 'Network equipment and devices'),
-('Audio/Visual', 'Audio and visual equipment');
+('Audio/Visual', 'Audio and visual equipment'),
+('Other', 'Other equipment and miscellaneous items');
 
 -- Note: Handover table has been merged into equipment table
 -- Equipment availability is determined by staff_name field:

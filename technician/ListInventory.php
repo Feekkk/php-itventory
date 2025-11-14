@@ -39,9 +39,9 @@ if ($has_table) {
     // Build WHERE clause (use table aliases if equipment table exists)
     if (!empty($search)) {
         if ($has_equipment_table) {
-            $where[] = "(e.equipment_name LIKE ? OR e.equipment_id LIKE ? OR e.description LIKE ? OR e.staff_name LIKE ? OR e.brand LIKE ? OR e.model LIKE ?)";
+            $where[] = "(e.equipment_name LIKE ? OR e.equipment_id LIKE ? OR e.staff_name LIKE ? OR e.brand LIKE ? OR e.model LIKE ?)";
         } else {
-            $where[] = "(equipment_name LIKE ? OR equipment_id LIKE ? OR description LIKE ? OR staff_name LIKE ? OR brand LIKE ? OR model LIKE ?)";
+            $where[] = "(equipment_name LIKE ? OR equipment_id LIKE ? OR staff_name LIKE ? OR brand LIKE ? OR model LIKE ?)";
         }
         $search_param = "%{$search}%";
         $params[] = $search_param;
@@ -49,8 +49,7 @@ if ($has_table) {
         $params[] = $search_param;
         $params[] = $search_param;
         $params[] = $search_param;
-        $params[] = $search_param;
-        $types .= 'ssssss';
+        $types .= 'sssss';
     }
     
     if (!empty($category)) {
@@ -242,7 +241,9 @@ if ($has_table) {
         $inventory_items = array_filter($inventory_items, function($item) use ($search) {
             return stripos($item['equipment_name'], $search) !== false ||
                    stripos($item['equipment_id'], $search) !== false ||
-                   stripos($item['description'], $search) !== false;
+                   stripos($item['brand'] ?? '', $search) !== false ||
+                   stripos($item['model'] ?? '', $search) !== false ||
+                   stripos($item['staff_name'] ?? '', $search) !== false;
         });
     }
     
@@ -282,14 +283,17 @@ try {
         
         // Count items by category (use all items, not filtered)
         if ($has_table) {
-            // Check if inventory table has category_id column
-            $columns_check = $cat_conn->query("SHOW COLUMNS FROM inventory LIKE 'category_id'");
-            $has_category_id = $columns_check && $columns_check->num_rows > 0;
+            // Check if equipment table exists
+            $equipment_table_check = $cat_conn->query("SHOW TABLES LIKE 'equipment'");
+            $has_equipment_table = $equipment_table_check && $equipment_table_check->num_rows > 0;
             
-            if ($has_category_id) {
-                // New structure: count by category_id
+            if ($has_equipment_table) {
+                // New structure: count by category_id from equipment table
                 foreach ($categories as $cat_id => $cat_name) {
-                    $count_sql = "SELECT COUNT(*) as count FROM inventory WHERE category_id = ?";
+                    $count_sql = "SELECT COUNT(*) as count 
+                                  FROM inventory inv 
+                                  INNER JOIN equipment e ON inv.equipment_id = e.equipment_id 
+                                  WHERE e.category_id = ?";
                     $count_stmt = $cat_conn->prepare($count_sql);
                     $count_stmt->bind_param("i", $cat_id);
                     $count_stmt->execute();
@@ -298,15 +302,32 @@ try {
                     $count_stmt->close();
                 }
             } else {
-                // Old structure: count by category name
-                foreach ($categories as $cat_id => $cat_name) {
-                    $count_sql = "SELECT COUNT(*) as count FROM inventory WHERE category = ?";
-                    $count_stmt = $cat_conn->prepare($count_sql);
-                    $count_stmt->bind_param("s", $cat_name);
-                    $count_stmt->execute();
-                    $count_result = $count_stmt->get_result();
-                    $category_counts[$cat_name] = $count_result->fetch_assoc()['count'];
-                    $count_stmt->close();
+                // Check if inventory table has category_id column
+                $columns_check = $cat_conn->query("SHOW COLUMNS FROM inventory LIKE 'category_id'");
+                $has_category_id = $columns_check && $columns_check->num_rows > 0;
+                
+                if ($has_category_id) {
+                    // New structure without equipment table: count by category_id
+                    foreach ($categories as $cat_id => $cat_name) {
+                        $count_sql = "SELECT COUNT(*) as count FROM inventory WHERE category_id = ?";
+                        $count_stmt = $cat_conn->prepare($count_sql);
+                        $count_stmt->bind_param("i", $cat_id);
+                        $count_stmt->execute();
+                        $count_result = $count_stmt->get_result();
+                        $category_counts[$cat_name] = $count_result->fetch_assoc()['count'];
+                        $count_stmt->close();
+                    }
+                } else {
+                    // Old structure: count by category name
+                    foreach ($categories as $cat_id => $cat_name) {
+                        $count_sql = "SELECT COUNT(*) as count FROM inventory WHERE category = ?";
+                        $count_stmt = $cat_conn->prepare($count_sql);
+                        $count_stmt->bind_param("s", $cat_name);
+                        $count_stmt->execute();
+                        $count_result = $count_stmt->get_result();
+                        $category_counts[$cat_name] = $count_result->fetch_assoc()['count'];
+                        $count_stmt->close();
+                    }
                 }
             }
         }
@@ -321,7 +342,8 @@ try {
             6 => 'Accessories',
             7 => 'Cables & Adapters',
             8 => 'Networking',
-            9 => 'Audio/Visual'
+            9 => 'Audio/Visual',
+            10 => 'Other'
         ];
         foreach ($categories as $cat_name) {
             $category_counts[$cat_name] = 0;
@@ -340,7 +362,8 @@ try {
         6 => 'Accessories',
         7 => 'Cables & Adapters',
         8 => 'Networking',
-        9 => 'Audio/Visual'
+        9 => 'Audio/Visual',
+        10 => 'Other'
     ];
     foreach ($categories as $cat_name) {
         $category_counts[$cat_name] = 0;
@@ -525,9 +548,6 @@ require_once __DIR__ . '/../component/header.php';
                             <td>
                                 <div class="equipment-name">
                                     <strong><?php echo htmlspecialchars($item['equipment_name'] ?? 'N/A'); ?></strong>
-                                    <?php if (!empty($item['description'])): ?>
-                                        <span class="equipment-desc"><?php echo htmlspecialchars($item['description']); ?></span>
-                                    <?php endif; ?>
                                 </div>
                             </td>
                             <td>
