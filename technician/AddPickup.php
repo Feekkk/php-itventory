@@ -63,27 +63,42 @@ $equipment_items = [];
 try {
     $conn = getDBConnection();
     
+    // Check if equipment table exists (new structure)
+    $equipment_table_check = $conn->query("SHOW TABLES LIKE 'equipment'");
+    $has_equipment_table = $equipment_table_check && $equipment_table_check->num_rows > 0;
+    
     // Check if inventory table exists
     $table_check = $conn->query("SHOW TABLES LIKE 'inventory'");
     if ($table_check && $table_check->num_rows > 0) {
-        // Check if inventory table has category_id column
-        $columns_check = $conn->query("SHOW COLUMNS FROM inventory LIKE 'category_id'");
-        $has_category_id = $columns_check && $columns_check->num_rows > 0;
-        
-        if ($has_category_id) {
-            // New structure: join with categories
-            $equipment_sql = "SELECT i.equipment_id, i.equipment_name, i.category_id, c.category_name 
-                             FROM inventory i 
-                             LEFT JOIN categories c ON i.category_id = c.id 
-                             WHERE i.status = 'Available' 
-                             ORDER BY c.category_name ASC, i.equipment_name ASC";
+        if ($has_equipment_table) {
+            // New structure: Join equipment with inventory and categories
+            // Only show equipment WITHOUT staff_name (available for handover)
+            $equipment_sql = "SELECT e.equipment_id, e.equipment_name, e.category_id, c.category_name 
+                             FROM equipment e 
+                             INNER JOIN inventory i ON e.equipment_id = i.equipment_id
+                             LEFT JOIN categories c ON e.category_id = c.id 
+                             WHERE (e.staff_name IS NULL OR e.staff_name = '')
+                             ORDER BY c.category_name ASC, e.equipment_name ASC";
         } else {
-            // Old structure: try to join by category name, or use NULL category_id
-            $equipment_sql = "SELECT i.equipment_id, i.equipment_name, c.id as category_id, i.category as category_name
-                             FROM inventory i
-                             LEFT JOIN categories c ON i.category = c.category_name
-                             WHERE i.status = 'Available'
-                             ORDER BY i.category ASC, i.equipment_name ASC";
+            // Old structure: Check if inventory table has category_id column
+            $columns_check = $conn->query("SHOW COLUMNS FROM inventory LIKE 'category_id'");
+            $has_category_id = $columns_check && $columns_check->num_rows > 0;
+            
+            if ($has_category_id) {
+                // New structure without equipment table: join with categories
+                $equipment_sql = "SELECT i.equipment_id, i.equipment_name, i.category_id, c.category_name 
+                                 FROM inventory i 
+                                 LEFT JOIN categories c ON i.category_id = c.id 
+                                 WHERE i.status = 'Available' 
+                                 ORDER BY c.category_name ASC, i.equipment_name ASC";
+            } else {
+                // Old structure: try to join by category name, or use NULL category_id
+                $equipment_sql = "SELECT i.equipment_id, i.equipment_name, c.id as category_id, i.category as category_name
+                                 FROM inventory i
+                                 LEFT JOIN categories c ON i.category = c.category_name
+                                 WHERE i.status = 'Available'
+                                 ORDER BY i.category ASC, i.equipment_name ASC";
+            }
         }
         
         $equipment_result = $conn->query($equipment_sql);
@@ -104,7 +119,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lecturer_id = trim($_POST['lecturer_id'] ?? '');
     $lecturer_name = trim($_POST['lecturer_name'] ?? '');
     $lecturer_email = trim($_POST['lecturer_email'] ?? '');
-    $lecturer_phone = trim($_POST['lecturer_phone'] ?? '');
     $pickup_date = trim($_POST['pickup_date'] ?? date('Y-m-d')); // Default to today if not provided
     $return_date = trim($_POST['return_date'] ?? '');
     
@@ -123,27 +137,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $conn = getDBConnection();
             
-            // Get equipment name and status
-            $equipment_stmt = $conn->prepare("SELECT equipment_name, status FROM inventory WHERE equipment_id = ?");
-            $equipment_stmt->bind_param("s", $equipment_id);
-            $equipment_stmt->execute();
-            $equipment_result = $equipment_stmt->get_result();
+            // Check if equipment table exists
+            $equipment_table_check = $conn->query("SHOW TABLES LIKE 'equipment'");
+            $has_equipment_table = $equipment_table_check && $equipment_table_check->num_rows > 0;
             
-            if ($equipment_result->num_rows === 0) {
-                $error = 'Selected equipment not found.';
-                $equipment_stmt->close();
-                $conn->close();
-            } else {
-                $equipment_row = $equipment_result->fetch_assoc();
-                $equipment_name = $equipment_row['equipment_name'];
-                $equipment_status = $equipment_row['status'];
-                $equipment_stmt->close();
+            if ($has_equipment_table) {
+                // New structure: Check equipment table for staff_name
+                $equipment_stmt = $conn->prepare("SELECT e.equipment_name, e.staff_name FROM equipment e WHERE e.equipment_id = ?");
+                $equipment_stmt->bind_param("s", $equipment_id);
+                $equipment_stmt->execute();
+                $equipment_result = $equipment_stmt->get_result();
                 
-                // Check if equipment is available
-                if ($equipment_status !== 'Available') {
-                    $error = 'Equipment is not available for handover. Current status: ' . htmlspecialchars($equipment_status);
+                if ($equipment_result->num_rows === 0) {
+                    $error = 'Selected equipment not found.';
+                    $equipment_stmt->close();
                     $conn->close();
                 } else {
+                    $equipment_row = $equipment_result->fetch_assoc();
+                    $equipment_name = $equipment_row['equipment_name'];
+                    $staff_name_existing = $equipment_row['staff_name'] ?? '';
+                    $equipment_stmt->close();
+                    
+                    // Check if equipment is available (no staff_name means available)
+                    if (!empty($staff_name_existing)) {
+                        $error = 'Equipment is already assigned to: ' . htmlspecialchars($staff_name_existing) . '. Cannot create new handover.';
+                        $conn->close();
+                    } else {
+            } else {
+                // Old structure: Get equipment name and status from inventory
+                $equipment_stmt = $conn->prepare("SELECT equipment_name, status FROM inventory WHERE equipment_id = ?");
+                $equipment_stmt->bind_param("s", $equipment_id);
+                $equipment_stmt->execute();
+                $equipment_result = $equipment_stmt->get_result();
+                
+                if ($equipment_result->num_rows === 0) {
+                    $error = 'Selected equipment not found.';
+                    $equipment_stmt->close();
+                    $conn->close();
+                } else {
+                    $equipment_row = $equipment_result->fetch_assoc();
+                    $equipment_name = $equipment_row['equipment_name'];
+                    $equipment_status = $equipment_row['status'];
+                    $equipment_stmt->close();
+                    
+                    // Check if equipment is available
+                    if ($equipment_status !== 'Available') {
+                        $error = 'Equipment is not available for handover. Current status: ' . htmlspecialchars($equipment_status);
+                        $conn->close();
+                    } else {
+            }
+            
+            if (empty($error)) {
                     // Check if handover table exists, create if not
                     $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
                     if (!$table_check || $table_check->num_rows === 0) {
@@ -154,7 +198,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             lecturer_id VARCHAR(50) NOT NULL,
                             lecturer_name VARCHAR(255) NOT NULL,
                             lecturer_email VARCHAR(255) NOT NULL,
-                            lecturer_phone VARCHAR(50),
                             pickup_date DATE NOT NULL,
                             return_date DATE,
                             handoverStat VARCHAR(50) DEFAULT 'pending',
@@ -186,26 +229,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                     
-                    // Start transaction to ensure both operations succeed or fail together
+                    // Start transaction to ensure all operations succeed or fail together
                     $conn->autocommit(FALSE);
                     
                     try {
-                        // Insert new handover record
-                        $lecturer_phone_param = empty($lecturer_phone) ? '' : $lecturer_phone;
-                        if (empty($return_date)) {
-                            $insert_stmt = $conn->prepare("INSERT INTO handover (equipment_id, equipment_name, lecturer_id, lecturer_name, lecturer_email, lecturer_phone, pickup_date, handoverStat) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')");
-                            $insert_stmt->bind_param("sssssss", $equipment_id, $equipment_name, $lecturer_id, $lecturer_name, $lecturer_email, $lecturer_phone_param, $pickup_date);
+                        if ($has_equipment_table) {
+                            // New structure: Update equipment table with handover information (merged handover table)
+                            $return_date_param = empty($return_date) ? NULL : $return_date;
+                            
+                            $update_equipment_stmt = $conn->prepare("UPDATE equipment SET 
+                                staff_id = ?, 
+                                staff_name = ?, 
+                                staff_email = ?, 
+                                pickup_date = ?, 
+                                return_date = ?, 
+                                handover_status = 'pending'
+                                WHERE equipment_id = ?");
+                            $update_equipment_stmt->bind_param("ssssss", 
+                                $lecturer_id, 
+                                $lecturer_name, 
+                                $lecturer_email, 
+                                $pickup_date, 
+                                $return_date_param, 
+                                $equipment_id);
+                            
+                            if (!$update_equipment_stmt->execute()) {
+                                throw new Exception("Failed to update equipment handover information: " . $update_equipment_stmt->error);
+                            }
+                            $update_equipment_stmt->close();
                         } else {
-                            $insert_stmt = $conn->prepare("INSERT INTO handover (equipment_id, equipment_name, lecturer_id, lecturer_name, lecturer_email, lecturer_phone, pickup_date, return_date, handoverStat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
-                            $insert_stmt->bind_param("ssssssss", $equipment_id, $equipment_name, $lecturer_id, $lecturer_name, $lecturer_email, $lecturer_phone_param, $pickup_date, $return_date);
+                            // Old structure: Insert into handover table (backward compatibility)
+                            if (empty($return_date)) {
+                                $insert_stmt = $conn->prepare("INSERT INTO handover (equipment_id, equipment_name, lecturer_id, lecturer_name, lecturer_email, pickup_date, handoverStat) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
+                                $insert_stmt->bind_param("ssssss", $equipment_id, $equipment_name, $lecturer_id, $lecturer_name, $lecturer_email, $pickup_date);
+                            } else {
+                                $insert_stmt = $conn->prepare("INSERT INTO handover (equipment_id, equipment_name, lecturer_id, lecturer_name, lecturer_email, pickup_date, return_date, handoverStat) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')");
+                                $insert_stmt->bind_param("sssssss", $equipment_id, $equipment_name, $lecturer_id, $lecturer_name, $lecturer_email, $pickup_date, $return_date);
+                            }
+                            
+                            if (!$insert_stmt->execute()) {
+                                throw new Exception("Failed to insert handover record: " . $insert_stmt->error);
+                            }
+                            $insert_stmt->close();
                         }
                         
-                        if (!$insert_stmt->execute()) {
-                            throw new Exception("Failed to insert handover record: " . $insert_stmt->error);
-                        }
-                        $insert_stmt->close();
-                        
-                        // Update inventory status to "hand over"
+                        // Update inventory status to "hand over" (for backward compatibility)
                         $update_stmt = $conn->prepare("UPDATE inventory SET status = 'hand over' WHERE equipment_id = ?");
                         $update_stmt->bind_param("s", $equipment_id);
                         
@@ -218,7 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $conn->commit();
                         $conn->autocommit(TRUE);
                         
-                        setSessionMessage('success', 'Handover request added successfully! Equipment status updated to "hand over".');
+                        setSessionMessage('success', 'Handover request added successfully! Equipment assigned to ' . htmlspecialchars($lecturer_name) . '.');
                         $conn->close();
                         header('Location: Pickup.php');
                         exit();
@@ -229,6 +297,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $error = 'Failed to add handover request: ' . $e->getMessage();
                         if (isset($insert_stmt)) {
                             $insert_stmt->close();
+                        }
+                        if (isset($update_equipment_stmt)) {
+                            $update_equipment_stmt->close();
                         }
                         if (isset($update_stmt)) {
                             $update_stmt->close();
@@ -374,17 +445,6 @@ require_once __DIR__ . '/../component/header.php';
                         >
                     </div>
 
-                    <div class="form-group">
-                        <label for="lecturer_phone">Lecturer Phone</label>
-                        <input 
-                            type="tel" 
-                            id="lecturer_phone" 
-                            name="lecturer_phone" 
-                            value="<?php echo htmlspecialchars($_POST['lecturer_phone'] ?? ''); ?>"
-                            placeholder="e.g., +1 234-567-8900"
-                        >
-                        <small>Optional contact number</small>
-                    </div>
                 </div>
             </div>
 

@@ -19,16 +19,19 @@ $handovers = [];
 
 try {
     $conn = getDBConnection();
-    $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
     
-    if ($table_check && $table_check->num_rows > 0) {
-        // Build WHERE clause
-        $where = ["handoverStat = 'pending'"];
+    // Check if equipment table exists (new structure)
+    $equipment_table_check = $conn->query("SHOW TABLES LIKE 'equipment'");
+    $has_equipment_table = $equipment_table_check && $equipment_table_check->num_rows > 0;
+    
+    if ($has_equipment_table) {
+        // New structure: Query equipment table for pending handovers
+        $where = ["handover_status = 'pending'", "staff_name IS NOT NULL AND staff_name != ''"];
         $params = [];
         $types = '';
         
         if (!empty($search)) {
-            $where[] = "(equipment_id LIKE ? OR equipment_name LIKE ? OR lecturer_id LIKE ? OR lecturer_name LIKE ? OR lecturer_email LIKE ?)";
+            $where[] = "(equipment_id LIKE ? OR equipment_name LIKE ? OR staff_id LIKE ? OR staff_name LIKE ? OR staff_email LIKE ?)";
             $search_param = "%{$search}%";
             $params[] = $search_param;
             $params[] = $search_param;
@@ -40,8 +43,23 @@ try {
         
         $where_clause = "WHERE " . implode(" AND ", $where);
         
-        // Get handovers
-        $sql = "SELECT * FROM handover $where_clause ORDER BY created_at DESC";
+        // Get handovers from equipment table
+        $sql = "SELECT 
+            equipment_id,
+            equipment_name,
+            staff_id as lecturer_id,
+            staff_name as lecturer_name,
+            staff_email as lecturer_email,
+            pickup_date,
+            return_date,
+            handover_status as handoverStat,
+            handover_staff as handoverStaff,
+            return_staff as returnStaff,
+            created_at,
+            updated_at
+            FROM equipment 
+            $where_clause 
+            ORDER BY created_at DESC";
         $stmt = $conn->prepare($sql);
         
         if (!empty($params)) {
@@ -52,6 +70,39 @@ try {
         $result = $stmt->get_result();
         $handovers = $result->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
+    } else {
+        // Old structure: Use handover table (backward compatibility)
+        $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
+        if ($table_check && $table_check->num_rows > 0) {
+            $where = ["handoverStat = 'pending'"];
+            $params = [];
+            $types = '';
+            
+            if (!empty($search)) {
+                $where[] = "(equipment_id LIKE ? OR equipment_name LIKE ? OR lecturer_id LIKE ? OR lecturer_name LIKE ? OR lecturer_email LIKE ?)";
+                $search_param = "%{$search}%";
+                $params[] = $search_param;
+                $params[] = $search_param;
+                $params[] = $search_param;
+                $params[] = $search_param;
+                $params[] = $search_param;
+                $types .= 'sssss';
+            }
+            
+            $where_clause = "WHERE " . implode(" AND ", $where);
+            
+            $sql = "SELECT * FROM handover $where_clause ORDER BY created_at DESC";
+            $stmt = $conn->prepare($sql);
+            
+            if (!empty($params)) {
+                $stmt->bind_param($types, ...$params);
+            }
+            
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $handovers = $result->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+        }
     }
     
     $conn->close();
@@ -205,7 +256,7 @@ require_once __DIR__ . '/../component/header.php';
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <a href="PickupForm.php?id=<?php echo htmlspecialchars($handover['handoverID']); ?>" class="action-btn view-btn" title="View Details">
+                                        <a href="PickupForm.php?id=<?php echo htmlspecialchars($handover['equipment_id']); ?>" class="action-btn view-btn" title="View Details">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                                 <circle cx="12" cy="12" r="3"></circle>

@@ -26,16 +26,18 @@ $stats = [
 
 try {
     $conn = getDBConnection();
-    $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
+    // Check if equipment table exists (new structure)
+    $equipment_table_check = $conn->query("SHOW TABLES LIKE 'equipment'");
+    $has_equipment_table = $equipment_table_check && $equipment_table_check->num_rows > 0;
     
-    if ($table_check && $table_check->num_rows > 0) {
-        // Build WHERE clause
-        $where = [];
+    if ($has_equipment_table) {
+        // New structure: Query equipment table for handovers (where staff_name is not empty)
+        $where = ["staff_name IS NOT NULL AND staff_name != ''"];
         $params = [];
         $types = '';
         
         if (!empty($search)) {
-            $where[] = "(equipment_id LIKE ? OR equipment_name LIKE ? OR lecturer_id LIKE ? OR lecturer_name LIKE ? OR lecturer_email LIKE ?)";
+            $where[] = "(equipment_id LIKE ? OR equipment_name LIKE ? OR staff_id LIKE ? OR staff_name LIKE ? OR staff_email LIKE ?)";
             $search_param = "%{$search}%";
             $params[] = $search_param;
             $params[] = $search_param;
@@ -53,7 +55,7 @@ try {
                 'Returned' => 'returned'
             ];
             $db_status = $status_map[$status_filter] ?? $status_filter;
-            $where[] = "handoverStat = ?";
+            $where[] = "handover_status = ?";
             $params[] = $db_status;
             $types .= 's';
         }
@@ -63,10 +65,11 @@ try {
         // Get statistics
         $stats_sql = "SELECT 
             COUNT(*) as total,
-            SUM(CASE WHEN handoverStat = 'pending' THEN 1 ELSE 0 END) as pending,
-            SUM(CASE WHEN handoverStat = 'picked_up' THEN 1 ELSE 0 END) as picked_up,
-            SUM(CASE WHEN handoverStat = 'returned' THEN 1 ELSE 0 END) as returned
-            FROM handover";
+            SUM(CASE WHEN handover_status = 'pending' THEN 1 ELSE 0 END) as pending,
+            SUM(CASE WHEN handover_status = 'picked_up' THEN 1 ELSE 0 END) as picked_up,
+            SUM(CASE WHEN handover_status = 'returned' THEN 1 ELSE 0 END) as returned
+            FROM equipment
+            WHERE staff_name IS NOT NULL AND staff_name != ''";
         
         $stats_result = $conn->query($stats_sql);
         if ($stats_result) {
@@ -77,8 +80,23 @@ try {
             $stats['returned'] = $stats_row['returned'] ?? 0;
         }
         
-        // Get handovers
-        $sql = "SELECT * FROM handover $where_clause ORDER BY created_at DESC";
+        // Get handovers from equipment table
+        $sql = "SELECT 
+            equipment_id,
+            equipment_name,
+            staff_id as lecturer_id,
+            staff_name as lecturer_name,
+            staff_email as lecturer_email,
+            pickup_date,
+            return_date,
+            handover_status as handoverStat,
+            handover_staff as handoverStaff,
+            return_staff as returnStaff,
+            created_at,
+            updated_at
+            FROM equipment 
+            $where_clause 
+            ORDER BY created_at DESC";
         $stmt = $conn->prepare($sql);
         
         if (!empty($params)) {
@@ -89,6 +107,70 @@ try {
         $result = $stmt->get_result();
         $handovers = $result->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
+    } else {
+        // Old structure: Use handover table (backward compatibility)
+        $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
+        if ($table_check && $table_check->num_rows > 0) {
+            // Build WHERE clause
+            $where = [];
+            $params = [];
+            $types = '';
+            
+            if (!empty($search)) {
+                $where[] = "(equipment_id LIKE ? OR equipment_name LIKE ? OR lecturer_id LIKE ? OR lecturer_name LIKE ? OR lecturer_email LIKE ?)";
+                $search_param = "%{$search}%";
+                $params[] = $search_param;
+                $params[] = $search_param;
+                $params[] = $search_param;
+                $params[] = $search_param;
+                $params[] = $search_param;
+                $types .= 'sssss';
+            }
+            
+            if (!empty($status_filter)) {
+                $status_map = [
+                    'Pending' => 'pending',
+                    'Picked Up' => 'picked_up',
+                    'Returned' => 'returned'
+                ];
+                $db_status = $status_map[$status_filter] ?? $status_filter;
+                $where[] = "handoverStat = ?";
+                $params[] = $db_status;
+                $types .= 's';
+            }
+            
+            $where_clause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
+            
+            // Get statistics
+            $stats_sql = "SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN handoverStat = 'pending' THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN handoverStat = 'picked_up' THEN 1 ELSE 0 END) as picked_up,
+                SUM(CASE WHEN handoverStat = 'returned' THEN 1 ELSE 0 END) as returned
+                FROM handover";
+            
+            $stats_result = $conn->query($stats_sql);
+            if ($stats_result) {
+                $stats_row = $stats_result->fetch_assoc();
+                $stats['total'] = $stats_row['total'] ?? 0;
+                $stats['pending'] = $stats_row['pending'] ?? 0;
+                $stats['picked_up'] = $stats_row['picked_up'] ?? 0;
+                $stats['returned'] = $stats_row['returned'] ?? 0;
+            }
+            
+            // Get handovers
+            $sql = "SELECT * FROM handover $where_clause ORDER BY created_at DESC";
+            $stmt = $conn->prepare($sql);
+            
+            if (!empty($params)) {
+                $stmt->bind_param($types, ...$params);
+            }
+            
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $handovers = $result->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+        }
     }
     
     $conn->close();
@@ -308,7 +390,7 @@ require_once __DIR__ . '/../component/header.php';
                                     </div>
                                 </div>
                                 <div class="card-actions">
-                                    <a href="PickupForm.php?id=<?php echo htmlspecialchars($handover['handoverID']); ?>" class="action-btn view-btn" title="View Details">
+                                    <a href="PickupForm.php?id=<?php echo htmlspecialchars($handover['equipment_id']); ?>" class="action-btn view-btn" title="View Details">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                             <circle cx="12" cy="12" r="3"></circle>
@@ -395,7 +477,7 @@ require_once __DIR__ . '/../component/header.php';
                                     </div>
                                 </div>
                                 <div class="card-actions">
-                                    <a href="PickupForm.php?id=<?php echo htmlspecialchars($handover['handoverID']); ?>" class="action-btn view-btn" title="View Details">
+                                    <a href="PickupForm.php?id=<?php echo htmlspecialchars($handover['equipment_id']); ?>" class="action-btn view-btn" title="View Details">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                             <circle cx="12" cy="12" r="3"></circle>

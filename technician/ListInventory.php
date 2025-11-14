@@ -28,23 +28,39 @@ $table_check = $conn->query("SHOW TABLES LIKE 'inventory'");
 $has_table = $table_check && $table_check->num_rows > 0;
 
 if ($has_table) {
+    // Check if equipment table exists first (to determine query structure)
+    $equipment_table_check = $conn->query("SHOW TABLES LIKE 'equipment'");
+    $has_equipment_table = $equipment_table_check && $equipment_table_check->num_rows > 0;
+    
     // Check if inventory table has category_id column (new structure) or category column (old structure)
     $columns_check = $conn->query("SHOW COLUMNS FROM inventory LIKE 'category_id'");
     $has_category_id = $columns_check && $columns_check->num_rows > 0;
     
-    // Build WHERE clause
+    // Build WHERE clause (use table aliases if equipment table exists)
     if (!empty($search)) {
-        $where[] = "(equipment_name LIKE ? OR equipment_id LIKE ? OR description LIKE ?)";
+        if ($has_equipment_table) {
+            $where[] = "(e.equipment_name LIKE ? OR e.equipment_id LIKE ? OR e.description LIKE ? OR e.staff_name LIKE ? OR e.brand LIKE ? OR e.model LIKE ?)";
+        } else {
+            $where[] = "(equipment_name LIKE ? OR equipment_id LIKE ? OR description LIKE ? OR staff_name LIKE ? OR brand LIKE ? OR model LIKE ?)";
+        }
         $search_param = "%{$search}%";
         $params[] = $search_param;
         $params[] = $search_param;
         $params[] = $search_param;
-        $types .= 'sss';
+        $params[] = $search_param;
+        $params[] = $search_param;
+        $params[] = $search_param;
+        $types .= 'ssssss';
     }
     
     if (!empty($category)) {
-        if ($has_category_id) {
-            // New structure: use category_id
+        if ($has_equipment_table) {
+            // New structure with equipment table: use e.category_id
+            $where[] = "e.category_id = ?";
+            $params[] = (int)$category;
+            $types .= 'i';
+        } elseif ($has_category_id) {
+            // New structure without equipment table: use category_id
             $where[] = "category_id = ?";
             $params[] = (int)$category;
             $types .= 'i';
@@ -57,15 +73,27 @@ if ($has_table) {
     }
     
     if (!empty($status)) {
-        $where[] = "status = ?";
+        if ($has_equipment_table) {
+            $where[] = "inv.status = ?";
+        } else {
+            $where[] = "status = ?";
+        }
         $params[] = $status;
         $types .= 's';
     }
     
+    // Build WHERE clause for joined query
     $where_clause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
     
-    // Get total count
-    $count_sql = "SELECT COUNT(*) as total FROM inventory $where_clause";
+    // Get total count (join with equipment if available)
+    if ($has_equipment_table) {
+        $count_sql = "SELECT COUNT(*) as total 
+                      FROM inventory inv 
+                      INNER JOIN equipment e ON inv.equipment_id = e.equipment_id 
+                      $where_clause";
+    } else {
+        $count_sql = "SELECT COUNT(*) as total FROM inventory $where_clause";
+    }
     $count_stmt = $conn->prepare($count_sql);
     if (!empty($params)) {
         $count_stmt->bind_param($types, ...$params);
@@ -75,15 +103,34 @@ if ($has_table) {
     $total_items = $total_result->fetch_assoc()['total'];
     $count_stmt->close();
     
-    // Get inventory items with category name
-    if ($has_category_id) {
-        $sql = "SELECT i.*, c.category_name as category 
-                FROM inventory i 
-                LEFT JOIN categories c ON i.category_id = c.id 
-                $where_clause 
-                ORDER BY equipment_name ASC";
+    // Get inventory items with equipment and category data
+    if ($has_equipment_table) {
+        // Join with equipment table and categories
+        if ($has_category_id) {
+            $sql = "SELECT inv.*, e.*, c.category_name as category 
+                    FROM inventory inv 
+                    INNER JOIN equipment e ON inv.equipment_id = e.equipment_id 
+                    LEFT JOIN categories c ON e.category_id = c.id 
+                    $where_clause 
+                    ORDER BY e.equipment_name ASC";
+        } else {
+            $sql = "SELECT inv.*, e.* 
+                    FROM inventory inv 
+                    INNER JOIN equipment e ON inv.equipment_id = e.equipment_id 
+                    $where_clause 
+                    ORDER BY e.equipment_name ASC";
+        }
     } else {
-        $sql = "SELECT * FROM inventory $where_clause ORDER BY equipment_name ASC";
+        // Fallback to old structure
+        if ($has_category_id) {
+            $sql = "SELECT i.*, c.category_name as category 
+                    FROM inventory i 
+                    LEFT JOIN categories c ON i.category_id = c.id 
+                    $where_clause 
+                    ORDER BY equipment_name ASC";
+        } else {
+            $sql = "SELECT * FROM inventory $where_clause ORDER BY equipment_name ASC";
+        }
     }
     
     $stmt = $conn->prepare($sql);
@@ -349,6 +396,14 @@ require_once __DIR__ . '/../component/header.php';
                         </svg>
                         <span>Add Item</span>
                     </a>
+                    <a href="ImportCSV.php" class="dropdown-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>Import CSV</span>
+                    </a>
                     <a href="AddCategoriesItem.php" class="dropdown-item">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -385,7 +440,7 @@ require_once __DIR__ . '/../component/header.php';
                 <input 
                     type="text" 
                     name="search" 
-                    placeholder="Search by equipment name, ID, or description..." 
+                    placeholder="Search by equipment name, ID, staff name, brand, model..." 
                     value="<?php echo htmlspecialchars($search); ?>"
                     class="search-input"
                 >
@@ -455,6 +510,7 @@ require_once __DIR__ . '/../component/header.php';
                         <th>Category</th>
                         <th>Brand / Model</th>
                         <th>Serial Number</th>
+                        <th>Staff Name</th>
                         <th>Status</th>
                         <th>Location</th>
                         <th>Actions</th>
@@ -491,6 +547,9 @@ require_once __DIR__ . '/../component/header.php';
                             </td>
                             <td>
                                 <span class="serial-number"><?php echo htmlspecialchars($item['serial_number'] ?? 'N/A'); ?></span>
+                            </td>
+                            <td>
+                                <span class="staff-name"><?php echo htmlspecialchars($item['staff_name'] ?? 'N/A'); ?></span>
                             </td>
                             <td>
                                 <?php

@@ -20,11 +20,11 @@ $success = '';
 
 // Handle handover action
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'handover') {
-    $handover_id = isset($_POST['handover_id']) ? trim($_POST['handover_id']) : '';
+    $equipment_id = isset($_POST['equipment_id']) ? trim($_POST['equipment_id']) : '';
     $agree_terms = isset($_POST['agreeTerms']) && $_POST['agreeTerms'] === 'on';
     
-    if (empty($handover_id)) {
-        $error = 'Handover ID is required.';
+    if (empty($equipment_id)) {
+        $error = 'Equipment ID is required.';
     } elseif (!$agree_terms) {
         $error = 'You must agree to the terms and conditions to proceed.';
     } elseif (!$user || empty($user['staff_id'])) {
@@ -33,43 +33,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         try {
             $conn = getDBConnection();
             
-            // Check if handover table exists
-            $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
-            if ($table_check && $table_check->num_rows > 0) {
-                // Check if columns exist, if not add them
-                $columns_check = $conn->query("SHOW COLUMNS FROM handover LIKE 'handoverStaff'");
-                if (!$columns_check || $columns_check->num_rows === 0) {
-                    // Add handoverStaff column
-                    $conn->query("ALTER TABLE handover ADD COLUMN handoverStaff VARCHAR(50) COMMENT 'Staff ID who performed the handover' AFTER handoverStat");
-                    $conn->query("ALTER TABLE handover ADD INDEX idx_handoverStaff (handoverStaff)");
-                }
-                
-                $columns_check2 = $conn->query("SHOW COLUMNS FROM handover LIKE 'returnStaff'");
-                if (!$columns_check2 || $columns_check2->num_rows === 0) {
-                    // Add returnStaff column
-                    $conn->query("ALTER TABLE handover ADD COLUMN returnStaff VARCHAR(50) COMMENT 'Staff ID who received the return' AFTER handoverStaff");
-                    $conn->query("ALTER TABLE handover ADD INDEX idx_returnStaff (returnStaff)");
-                }
-                
-                // Check current handover status
-                $check_stmt = $conn->prepare("SELECT handoverStat, equipment_id FROM handover WHERE handoverID = ?");
-                $check_stmt->bind_param("i", $handover_id);
+            // Check if equipment table exists
+            $equipment_table_check = $conn->query("SHOW TABLES LIKE 'equipment'");
+            $has_equipment_table = $equipment_table_check && $equipment_table_check->num_rows > 0;
+            
+            if ($has_equipment_table) {
+                // New structure: Check equipment table for handover status
+                $check_stmt = $conn->prepare("SELECT handover_status, staff_name FROM equipment WHERE equipment_id = ?");
+                $check_stmt->bind_param("s", $equipment_id);
                 $check_stmt->execute();
                 $check_result = $check_stmt->get_result();
                 
                 if ($check_result->num_rows === 1) {
-                    $handover_data = $check_result->fetch_assoc();
+                    $equipment_data = $check_result->fetch_assoc();
                     
-                    if ($handover_data['handoverStat'] !== 'pending') {
+                    if (empty($equipment_data['staff_name'])) {
+                        $error = 'No handover found for this equipment.';
+                    } elseif ($equipment_data['handover_status'] !== 'pending') {
                         $error = 'This handover has already been processed.';
                     } else {
                         // Start transaction
                         $conn->autocommit(FALSE);
                         
                         try {
-                            // Update handover status and staff
-                            $update_stmt = $conn->prepare("UPDATE handover SET handoverStat = 'picked_up', handoverStaff = ? WHERE handoverID = ?");
-                            $update_stmt->bind_param("si", $user['staff_id'], $handover_id);
+                            // Update equipment table: Set handover status to 'picked_up' and handover_staff
+                            $update_stmt = $conn->prepare("UPDATE equipment SET handover_status = 'picked_up', handover_staff = ? WHERE equipment_id = ?");
+                            $update_stmt->bind_param("ss", $user['staff_id'], $equipment_id);
                             
                             if (!$update_stmt->execute()) {
                                 throw new Exception("Failed to update handover: " . $update_stmt->error);
@@ -80,48 +69,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             $conn->commit();
                             $conn->autocommit(TRUE);
                             
-                            // Fetch updated handover data for email
-                            $handover_stmt = $conn->prepare("SELECT * FROM handover WHERE handoverID = ?");
-                            $handover_stmt->bind_param("i", $handover_id);
-                            $handover_stmt->execute();
-                            $handover_result = $handover_stmt->get_result();
-                            $updated_handover = $handover_result->fetch_assoc();
-                            $handover_stmt->close();
+                            // Fetch updated equipment data for email
+                            $equipment_stmt = $conn->prepare("SELECT e.*, c.category_name as category FROM equipment e LEFT JOIN categories c ON e.category_id = c.id WHERE e.equipment_id = ?");
+                            $equipment_stmt->bind_param("s", $equipment_id);
+                            $equipment_stmt->execute();
+                            $equipment_result = $equipment_stmt->get_result();
+                            $updated_equipment = $equipment_result->fetch_assoc();
+                            $equipment_stmt->close();
                             
-                            // Fetch equipment details for email
-                            $equipment_data = null;
-                            if (!empty($updated_handover['equipment_id'])) {
-                                $columns_check = $conn->query("SHOW COLUMNS FROM inventory LIKE 'category_id'");
-                                $has_category_id = $columns_check && $columns_check->num_rows > 0;
-                                
-                                if ($has_category_id) {
-                                    $equipment_stmt = $conn->prepare("SELECT i.*, c.category_name as category FROM inventory i LEFT JOIN categories c ON i.category_id = c.id WHERE i.equipment_id = ?");
-                                } else {
-                                    $equipment_stmt = $conn->prepare("SELECT * FROM inventory WHERE equipment_id = ?");
-                                }
-                                
-                                $equipment_stmt->bind_param("s", $updated_handover['equipment_id']);
-                                $equipment_stmt->execute();
-                                $equipment_result = $equipment_stmt->get_result();
-                                
-                                if ($equipment_result->num_rows === 1) {
-                                    $equipment_data = $equipment_result->fetch_assoc();
-                                }
-                                
-                                $equipment_stmt->close();
-                            }
+                            // Prepare handover data for email function (backward compatibility)
+                            $updated_handover = [
+                                'equipment_id' => $updated_equipment['equipment_id'],
+                                'equipment_name' => $updated_equipment['equipment_name'],
+                                'lecturer_id' => $updated_equipment['staff_id'],
+                                'lecturer_name' => $updated_equipment['staff_name'],
+                                'lecturer_email' => $updated_equipment['staff_email'],
+                                'pickup_date' => $updated_equipment['pickup_date'],
+                                'return_date' => $updated_equipment['return_date'],
+                                'handoverStat' => $updated_equipment['handover_status']
+                            ];
                             
                             // Send email notification to lecturer
-                            if ($updated_handover && $equipment_data) {
-                                $email_sent = sendHandoverConfirmationEmail($updated_handover, $equipment_data);
+                            if ($updated_handover && $updated_equipment) {
+                                $email_sent = sendHandoverConfirmationEmail($updated_handover, $updated_equipment);
                                 if (!$email_sent) {
                                     // Log error but don't fail the handover process
-                                    error_log("Failed to send email notification for handover ID: $handover_id");
+                                    error_log("Failed to send email notification for equipment: $equipment_id");
                                 }
                             }
                             
                             setSessionMessage('success', 'Equipment handover completed successfully.');
-                            header('Location: PickupForm.php?id=' . $handover_id);
+                            header('Location: PickupForm.php?id=' . $equipment_id);
                             exit();
                         } catch (Exception $e) {
                             // Rollback transaction
@@ -131,12 +109,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         }
                     }
                 } else {
-                    $error = 'Handover record not found.';
+                    $error = 'Equipment not found.';
                 }
                 
                 $check_stmt->close();
             } else {
-                $error = 'Handover table does not exist.';
+                // Old structure: Use handover table (backward compatibility)
+                $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
+                if ($table_check && $table_check->num_rows > 0) {
+                    // Old handover table logic here (for backward compatibility)
+                    $error = 'Please update to new equipment table structure.';
+                } else {
+                    $error = 'Equipment table does not exist.';
+                }
             }
             
             $conn->close();
@@ -146,65 +131,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Get handover ID from URL
-$handover_id = isset($_GET['id']) ? trim($_GET['id']) : '';
+// Get equipment ID from URL (changed from handover_id)
+$equipment_id = isset($_GET['id']) ? trim($_GET['id']) : '';
 
-if (empty($handover_id)) {
-    $error = 'Handover ID is required.';
+if (empty($equipment_id)) {
+    $error = 'Equipment ID is required.';
 } else {
     try {
         $conn = getDBConnection();
         
-        // Check if handover table exists
-        $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
-        if ($table_check && $table_check->num_rows > 0) {
-            // Check if columns exist, if not add them
-            $columns_check = $conn->query("SHOW COLUMNS FROM handover LIKE 'handoverStaff'");
-            if (!$columns_check || $columns_check->num_rows === 0) {
-                // Add handoverStaff column
-                $conn->query("ALTER TABLE handover ADD COLUMN handoverStaff VARCHAR(50) COMMENT 'Staff ID who performed the handover' AFTER handoverStat");
-                $conn->query("ALTER TABLE handover ADD INDEX idx_handoverStaff (handoverStaff)");
-            }
-            
-            $columns_check2 = $conn->query("SHOW COLUMNS FROM handover LIKE 'returnStaff'");
-            if (!$columns_check2 || $columns_check2->num_rows === 0) {
-                // Add returnStaff column
-                $conn->query("ALTER TABLE handover ADD COLUMN returnStaff VARCHAR(50) COMMENT 'Staff ID who received the return' AFTER handoverStaff");
-                $conn->query("ALTER TABLE handover ADD INDEX idx_returnStaff (returnStaff)");
-            }
-            
-            $stmt = $conn->prepare("SELECT * FROM handover WHERE handoverID = ?");
-            $stmt->bind_param("i", $handover_id);
+        // Check if equipment table exists
+        $equipment_table_check = $conn->query("SHOW TABLES LIKE 'equipment'");
+        $has_equipment_table = $equipment_table_check && $equipment_table_check->num_rows > 0;
+        
+        if ($has_equipment_table) {
+            // New structure: Get handover data from equipment table
+            $stmt = $conn->prepare("SELECT e.*, c.category_name as category FROM equipment e LEFT JOIN categories c ON e.category_id = c.id WHERE e.equipment_id = ?");
+            $stmt->bind_param("s", $equipment_id);
             $stmt->execute();
             $result = $stmt->get_result();
             
             if ($result->num_rows === 1) {
-                $handover = $result->fetch_assoc();
+                $equipment = $result->fetch_assoc();
                 
-                // Fetch equipment details from inventory
-                if (!empty($handover['equipment_id'])) {
-                    // Check if inventory table has category_id column
-                    $columns_check = $conn->query("SHOW COLUMNS FROM inventory LIKE 'category_id'");
-                    $has_category_id = $columns_check && $columns_check->num_rows > 0;
-                    
-                    if ($has_category_id) {
-                        // New structure: join with categories
-                        $equipment_stmt = $conn->prepare("SELECT i.*, c.category_name as category FROM inventory i LEFT JOIN categories c ON i.category_id = c.id WHERE i.equipment_id = ?");
-                    } else {
-                        // Old structure: use category column
-                        $equipment_stmt = $conn->prepare("SELECT * FROM inventory WHERE equipment_id = ?");
-                    }
-                    
-                    $equipment_stmt->bind_param("s", $handover['equipment_id']);
-                    $equipment_stmt->execute();
-                    $equipment_result = $equipment_stmt->get_result();
-                    
-                    if ($equipment_result->num_rows === 1) {
-                        $equipment = $equipment_result->fetch_assoc();
-                    }
-                    
-                    $equipment_stmt->close();
-                }
+                // Convert equipment data to handover format for display (backward compatibility)
+                $handover = [
+                    'equipment_id' => $equipment['equipment_id'],
+                    'equipment_name' => $equipment['equipment_name'],
+                    'lecturer_id' => $equipment['staff_id'],
+                    'lecturer_name' => $equipment['staff_name'],
+                    'lecturer_email' => $equipment['staff_email'],
+                    'pickup_date' => $equipment['pickup_date'],
+                    'return_date' => $equipment['return_date'],
+                    'handoverStat' => $equipment['handover_status'],
+                    'handoverStaff' => $equipment['handover_staff'],
+                    'returnStaff' => $equipment['return_staff']
+                ];
+                
+                // Equipment data is already fetched above
                 
                 // Fetch staff names from technician table
                 if (!empty($handover['handoverStaff'])) {
@@ -235,12 +199,19 @@ if (empty($handover_id)) {
                     $staff_stmt->close();
                 }
             } else {
-                $error = 'Handover record not found.';
+                $error = 'Equipment not found.';
             }
             
             $stmt->close();
         } else {
-            $error = 'Handover table does not exist.';
+            // Old structure: Use handover table (backward compatibility)
+            $table_check = $conn->query("SHOW TABLES LIKE 'handover'");
+            if ($table_check && $table_check->num_rows > 0) {
+                // Old handover table logic here (for backward compatibility)
+                $error = 'Please update to new equipment table structure.';
+            } else {
+                $error = 'Equipment table does not exist.';
+            }
         }
         
         $conn->close();
@@ -396,8 +367,8 @@ require_once __DIR__ . '/../component/header.php';
                     <div class="card-body">
                         <div class="details-grid">
                             <div class="detail-item">
-                                <div class="detail-label">Handover ID</div>
-                                <div class="detail-value handover-id"><?php echo htmlspecialchars($handover['handoverID']); ?></div>
+                                <div class="detail-label">Equipment ID</div>
+                                <div class="detail-value equipment-id"><?php echo htmlspecialchars($handover['equipment_id']); ?></div>
                             </div>
                             <div class="detail-item">
                                 <div class="detail-label">Lecturer ID</div>
@@ -411,12 +382,6 @@ require_once __DIR__ . '/../component/header.php';
                                 <div class="detail-label">Email</div>
                                 <div class="detail-value"><?php echo htmlspecialchars($handover['lecturer_email'] ?? 'N/A'); ?></div>
                             </div>
-                            <?php if (!empty($handover['lecturer_phone'])): ?>
-                                <div class="detail-item">
-                                    <div class="detail-label">Phone</div>
-                                    <div class="detail-value"><?php echo htmlspecialchars($handover['lecturer_phone']); ?></div>
-                                </div>
-                            <?php endif; ?>
                             <div class="detail-item">
                                 <div class="detail-label">Pickup Date</div>
                                 <div class="detail-value"><?php echo $handover['pickup_date'] ? date('d M Y', strtotime($handover['pickup_date'])) : 'N/A'; ?></div>
@@ -567,7 +532,7 @@ require_once __DIR__ . '/../component/header.php';
             <?php if ($is_pending): ?>
                 <form method="POST" action="" id="handoverForm" class="action-section">
                     <input type="hidden" name="action" value="handover">
-                    <input type="hidden" name="handover_id" value="<?php echo htmlspecialchars($handover['handoverID']); ?>">
+                    <input type="hidden" name="equipment_id" value="<?php echo htmlspecialchars($handover['equipment_id']); ?>">
                     <input type="hidden" name="agreeTerms" id="agreeTermsHidden" value="">
                     <button type="submit" class="btn-handover" id="handoverBtn" disabled>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

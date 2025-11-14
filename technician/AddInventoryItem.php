@@ -92,7 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $serial_number = trim($_POST['serial_number'] ?? '');
     $status = trim($_POST['status'] ?? 'Available');
     $location = trim($_POST['location'] ?? '');
-    $description = trim($_POST['description'] ?? '');
     
     // Validation
     if (empty($equipment_id)) {
@@ -123,30 +122,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conn->query($create_categories_sql);
             }
             
-            // Check if inventory table exists, create if not
-            $table_check = $conn->query("SHOW TABLES LIKE 'inventory'");
-            if (!$table_check || $table_check->num_rows === 0) {
-                // Create inventory table with foreign key
-                $create_table_sql = "CREATE TABLE IF NOT EXISTS inventory (
+            // Check if equipment table exists, create if not
+            $equipment_table_check = $conn->query("SHOW TABLES LIKE 'equipment'");
+            if (!$equipment_table_check || $equipment_table_check->num_rows === 0) {
+                // Create equipment table
+                $create_equipment_sql = "CREATE TABLE IF NOT EXISTS equipment (
                     id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                     equipment_id VARCHAR(50) NOT NULL UNIQUE,
                     equipment_name VARCHAR(255) NOT NULL,
                     category_id INT(11) UNSIGNED NOT NULL,
                     brand VARCHAR(100),
                     model VARCHAR(100),
-                    serial_number VARCHAR(100),
-                    status VARCHAR(50) DEFAULT 'Available',
-                    location VARCHAR(255),
-                    description TEXT,
+                    serial_number VARCHAR(100) NOT NULL,
+                    processor VARCHAR(100),
+                    operating_system VARCHAR(100),
+                    year INT,
+                    adapter VARCHAR(100),
+                    warranty_end DATE,
+                    remark TEXT,
+                    total DECIMAL(10,2),
+                    staff_id VARCHAR(50),
+                    staff_name VARCHAR(255),
+                    designation VARCHAR(100),
+                    staff_email VARCHAR(255),
+                    employment_type VARCHAR(100),
+                    job_category VARCHAR(100),
+                    dept_lvl3 VARCHAR(100),
+                    dept_lvl4 VARCHAR(100),
+                    source VARCHAR(50) DEFAULT 'manual',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_equipment_id (equipment_id),
                     INDEX idx_category_id (category_id),
-                    INDEX idx_status (status),
+                    INDEX idx_serial_number (serial_number),
                     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT ON UPDATE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
                 
-                if (!$conn->query($create_table_sql)) {
+                if (!$conn->query($create_equipment_sql)) {
+                    throw new Exception("Error creating equipment table: " . $conn->error);
+                }
+            }
+            
+            // Check if inventory table exists, create if not
+            $inventory_table_check = $conn->query("SHOW TABLES LIKE 'inventory'");
+            if (!$inventory_table_check || $inventory_table_check->num_rows === 0) {
+                // Create inventory table with foreign key to equipment
+                $create_inventory_sql = "CREATE TABLE IF NOT EXISTS inventory (
+                    id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    equipment_id VARCHAR(50) NOT NULL UNIQUE,
+                    status VARCHAR(50) DEFAULT 'Available',
+                    location VARCHAR(255),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_equipment_id (equipment_id),
+                    INDEX idx_status (status),
+                    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id) ON DELETE RESTRICT ON UPDATE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+                
+                if (!$conn->query($create_inventory_sql)) {
                     throw new Exception("Error creating inventory table: " . $conn->error);
                 }
             }
@@ -164,8 +197,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $category_check->close();
                 
-                // Check if equipment_id already exists
-                $check_stmt = $conn->prepare("SELECT id FROM inventory WHERE equipment_id = ?");
+                // Check if equipment_id already exists in equipment table
+                $check_stmt = $conn->prepare("SELECT id FROM equipment WHERE equipment_id = ?");
                 $check_stmt->bind_param("s", $equipment_id);
                 $check_stmt->execute();
                 $result = $check_stmt->get_result();
@@ -176,19 +209,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $check_stmt->close();
                     
-                    // Insert new inventory item with category_id
-                    $insert_stmt = $conn->prepare("INSERT INTO inventory (equipment_id, equipment_name, category_id, brand, model, serial_number, status, location, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                    $insert_stmt->bind_param("ssissssss", $equipment_id, $equipment_name, $category_id, $brand, $model, $serial_number, $status, $location, $description);
+                    // Start transaction
+                    $conn->autocommit(FALSE);
                     
-                    if ($insert_stmt->execute()) {
-                        $insert_stmt->close();
-                        $conn->close();
+                    try {
+                        // Insert into equipment table first
+                        $equipment_insert = $conn->prepare("INSERT INTO equipment (equipment_id, equipment_name, category_id, brand, model, serial_number, source) VALUES (?, ?, ?, ?, ?, ?, 'manual')");
+                        $equipment_insert->bind_param("ssisss", $equipment_id, $equipment_name, $category_id, $brand, $model, $serial_number);
+                        
+                        if (!$equipment_insert->execute()) {
+                            throw new Exception("Failed to insert equipment: " . $equipment_insert->error);
+                        }
+                        $equipment_insert->close();
+                        
+                        // Insert into inventory table (reference to equipment)
+                        $inventory_insert = $conn->prepare("INSERT INTO inventory (equipment_id, status, location) VALUES (?, ?, ?)");
+                        $inventory_insert->bind_param("sss", $equipment_id, $status, $location);
+                        
+                        if (!$inventory_insert->execute()) {
+                            throw new Exception("Failed to insert inventory: " . $inventory_insert->error);
+                        }
+                        $inventory_insert->close();
+                        
+                        // Commit transaction
+                        $conn->commit();
+                        $conn->autocommit(TRUE);
+                        
                         setSessionMessage('success', 'Inventory item added successfully!');
                         header('Location: ListInventory.php');
                         exit();
-                    } else {
-                        $error = 'Failed to add inventory item: ' . $insert_stmt->error;
-                        $insert_stmt->close();
+                    } catch (Exception $e) {
+                        $conn->rollback();
+                        $conn->autocommit(TRUE);
+                        $error = 'Failed to add inventory item: ' . $e->getMessage();
                     }
                 }
             }
@@ -356,16 +409,6 @@ require_once __DIR__ . '/../component/header.php';
             </div>
 
             <div class="form-section">
-                <h2 class="section-title">Additional Information</h2>
-                <div class="form-group full-width">
-                    <label for="description">Description</label>
-                    <textarea 
-                        id="description" 
-                        name="description" 
-                        rows="4"
-                        placeholder="Enter equipment specifications, features, or additional notes..."
-                    ><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
-                </div>
             </div>
 
             <div class="form-actions">
@@ -377,6 +420,14 @@ require_once __DIR__ . '/../component/header.php';
                     </svg>
                     <span>Add Inventory Item</span>
                 </button>
+                <a href="ImportCSV.php" class="btn-import" style="background-color: #17a2b8; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-right: 10px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span>Import CSV</span>
+                </a>
                 <a href="ListInventory.php" class="btn-cancel">Cancel</a>
             </div>
         </form>
